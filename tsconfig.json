@@ -16,7 +16,7 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "jsxImportSource": "react",
-    "types": ["react", "react-dom"],
+    "types": ["react", "react-dom", "vite/client"],
     "paths": {
       "@/*": [
         "./*"
