@@ -1,8 +1,25 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "../shared/hooks/use-auth";
 
 export default function LandingPage() {
+  const { user, loading, signIn } = useAuth();
+  const navigate = useNavigate();
+
+  const handleGetStarted = async () => {
+    if (user) {
+      navigate("/dashboard");
+    } else {
+      try {
+        await signIn();
+        navigate("/dashboard");
+      } catch (error) {
+        // Error already logged in hook
+      }
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col pt-20 pb-20 items-center">
       {/* Hero Content */}
@@ -31,12 +48,23 @@ export default function LandingPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <Link 
-              to="/dashboard"
-              className="inline-flex items-center justify-center px-6 py-3 bg-black text-white rounded-full font-semibold text-[14px] hover:bg-[#27AE60] active:scale-95 transition-all"
-            >
-              Get Started →
-            </Link>
+            {!loading && (
+              user ? (
+                <Link 
+                  to="/dashboard"
+                  className="inline-flex items-center justify-center px-6 py-3 bg-black text-white rounded-full font-semibold text-[14px] hover:bg-[#27AE60] active:scale-95 transition-all"
+                >
+                  Get Started →
+                </Link>
+              ) : (
+                <button 
+                  onClick={handleGetStarted}
+                  className="inline-flex items-center justify-center px-6 py-3 bg-black text-white rounded-full font-semibold text-[14px] hover:bg-[#27AE60] active:scale-95 transition-all"
+                >
+                  Get Started →
+                </button>
+              )
+            )}
           </motion.div>
         </div>
       </div>
