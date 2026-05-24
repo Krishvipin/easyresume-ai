@@ -1,6 +1,6 @@
 export const NAV_LINKS = [
-  { label: "Resume Builder", href: "/resume-builder" },
   { label: "ATS Checker", href: "/ats-checker" },
+  { label: "Resume Builder", href: "/resume-builder" },
   { label: "Modify Resume", href: "/modify-resume" },
   { label: "Cover Letter", href: "/cover-letter" },
 ];

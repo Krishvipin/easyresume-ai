@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Primary SEO -->
+    <title>Private Resume Builder | Free, Offline, No Sign-up</title>
+    <meta
+      name="description"
+      content="Build a professional, ATS-friendly resume in your browser. 100% free, open-source, and offline. No account required, no tracking, and your data never leaves your device."
+    />
+    <meta
+      name="keywords"
+      content="resume builder, free resume builder, offline resume, private resume builder, no sign up resume, ATS friendly resume, open source"
+    />
+    <meta name="author" content="Gurbax (Ashwini Gurbaxani)" />
+
+    <!-- Open Graph / Facebook / LinkedIn -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://resume-builder.ashwinig.com/" />
+    <meta
+      property="og:title"
+      content="Private Resume Builder | Build Your Resume in Private"
+    />
+    <meta
+      property="og:description"
+      content="No account. No tracking. No cloud. The free, offline-first resume builder that respects your privacy."
+    />
+    <meta
+      property="og:image"
+      content="https://resume-builder.ashwinig.com/og.png"
+    />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta
+      property="twitter:url"
+      content="https://resume-builder.ashwinig.com/"
+    />
+    <meta
+      property="twitter:title"
+      content="Private Resume Builder | Free & Offline"
+    />
+    <meta
+      property="twitter:description"
+      content="Build a professional resume without signing up. 100% browser-based and private."
+    />
+    <meta
+      property="twitter:image"
+      content="https://resume-builder.ashwinig.com/og.png"
+    />
+
+    <!-- Styling & Icons -->
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" href="favicon.png" />
+    <link rel="canonical" href="https://resume-builder.ashwinig.com/" />
+    <meta name="theme-color" content="#fdf9f5" />
+
+    <!-- Structured Data (JSON-LD) for Software Application -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Private Resume Builder",
+        "operatingSystem": "Web",
+        "applicationCategory": "BusinessApplication",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Ashwini Gurbaxani"
+        },
+        "description": "An offline-first, privacy-focused web application for building professional resumes."
+      }
+    </script>
+    <script
+      defer
+      src="https://umami.ashwinig.com/script.js"
+      data-website-id="79966c10-c529-49ca-bac2-0d3854d24957"
+    ></script>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Private Resume Builder</h1>
+        <p>
+          <span
+            style="
+              background: #e7f5e7;
+              color: #2a9d8f;
+              padding: 2px 6px;
+              border-radius: 4px;
+              font-size: 0.8em;
+              font-weight: bold;
+            "
+            >✅ Safe</span
+          >
+          Open source. Completely offline. No sign-ups.
+        </p>
+      </header>
+
+      <div class="content">
+        <aside class="editor">
+          <section class="card">
+            <h2>Template</h2>
+            <div class="template-buttons">
+              <button class="template-btn active" data-template="minimal">
+                Minimal
+              </button>
+              <button class="template-btn" data-template="professional">
+                Professional
+              </button>
+              <button class="template-btn" data-template="modern">
+                Modern
+              </button>
+            </div>
+            <div style="display: flex; gap: 2rem; margin-top: 1.5rem">
+              <div style="display: flex; align-items: center; gap: 0.75rem">
+                <span style="font-size: 0.875rem; color: #666; min-width: 50px"
+                  >Primary color</span
+                >
+                <input
+                  type="color"
+                  id="colorPrimary"
+                  style="
+                    width: 40px;
+                    height: 40px;
+                    cursor: pointer;
+                    border: 1px solid #e5e5e5;
+                    border-radius: 4px;
+                    padding: 2px;
+                  "
+                />
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.75rem">
+                <span style="font-size: 0.875rem; color: #666; min-width: 70px"
+                  >Secondary color</span
+                >
+                <input
+                  type="color"
+                  id="colorSecondary"
+                  style="
+                    width: 40px;
+                    height: 40px;
+                    cursor: pointer;
+                    border: 1px solid #e5e5e5;
+                    border-radius: 4px;
+                    padding: 2px;
+                  "
+                />
+              </div>
+            </div>
+          </section>
+          <section class="card">
+            <h2>Personal Information</h2>
+            <div class="photo-upload">
+              <label for="photoUpload" class="photo-label">
+                <div id="photoPreview" class="photo-preview">
+                  <span>+ Add Photo (Optional)</span>
+                </div>
+              </label>
+              <input
+                type="file"
+                id="photoUpload"
+                accept="image/*"
+                style="display: none"
+              />
+              <button
+                id="removePhoto"
+                class="remove-photo-btn"
+                style="display: none"
+              >
+                Remove Photo
+              </button>
+            </div>
+            <input type="text" id="name" placeholder="Full Name" />
+            <input type="email" id="email" placeholder="Email" />
+            <input type="tel" id="phone" placeholder="Phone" />
+            <input type="text" id="location" placeholder="Location" />
+            <textarea
+              id="summary"
+              placeholder="Professional Summary"
+            ></textarea>
+          </section>
+
+          <section class="card">
+            <div class="section-header">
+              <h2>Experience</h2>
+              <button class="add-btn" id="addExperience">+ Add</button>
+            </div>
+            <div id="experienceList"></div>
+          </section>
+
+          <section class="card">
+            <div class="section-header">
+              <h2>Education</h2>
+              <button class="add-btn" id="addEducation">+ Add</button>
+            </div>
+            <div id="educationList"></div>
+          </section>
+
+          <section class="card">
+            <div class="section-header">
+              <h2>Skills</h2>
+              <button class="add-btn" id="addSkill">+ Add</button>
+            </div>
+            <div id="skillsList"></div>
+          </section>
+
+          <section class="card">
+            <h2>Job Match Score</h2>
+            <textarea
+              id="jobDescription"
+              placeholder="Paste the Job Description here to see how well your resume matches..."
+              style="min-height: 120px"
+            ></textarea>
+            <button
+              class="add-btn"
+              id="analyzeBtn"
+              style="width: 100%; margin-top: 0.5rem"
+            >
+              Analyze Match
+            </button>
+
+            <div id="analysisResult" style="display: none; margin-top: 1.5rem">
+              <div class="score-circle">
+                <svg viewBox="0 0 36 36" class="circular-chart">
+                  <path
+                    class="circle-bg"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <path
+                    id="scoreCirclePath"
+                    class="circle"
+                    stroke-dasharray="0, 100"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <text x="18" y="20.35" class="percentage" id="scoreText">
+                    0%
+                  </text>
+                </svg>
+              </div>
+
+              <div style="margin-top: 1rem">
+                <h3 style="font-size: 0.875rem; margin-bottom: 0.5rem">
+                  Missing Keywords:
+                </h3>
+                <div id="missingKeywords" class="keyword-cloud"></div>
+              </div>
+            </div>
+          </section>
+          <!-- END NEW SECTION -->
+
+          <section class="card">
+            <button class="tips-toggle" id="tipsToggle">
+              💡 Resume Writing Tips
+            </button>
+            <ul class="tips" id="tips" style="display: none">
+              <li>
+                Keep your resume to one page if you have less than 10 years of
+                experience
+              </li>
+              <li>
+                Use action verbs to describe your achievements (e.g., "Led",
+                "Developed", "Increased")
+              </li>
+              <li>
+                Quantify your accomplishments with numbers and percentages when
+                possible
+              </li>
+              <li>
+                Tailor your resume to each job application by highlighting
+                relevant skills
+              </li>
+              <li>Proofread carefully - typos can cost you the interview</li>
+            </ul>
+          </section>
+
+          <a
+            href="https://www.producthunt.com/products/private-resume-builder-open-source?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-private&#0045;resume&#0045;builder"
+            target="_blank"
+            ><img
+              src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1028255&theme=light&t=1760858375686"
+              alt="Private&#0032;Resume&#0032;Builder - Build&#0032;Your&#0032;Resume&#0032;in&#0032;Private&#0046;&#0032;No&#0032;Account&#0046; | Product Hunt"
+              style="width: 250px; height: 54px"
+              width="250"
+              height="54"
+          /></a>
+          <a
+            class="github-button"
+            href="https://github.com/gurbaxani/resume-builder"
+            data-color-scheme="no-preference: light; light: light; dark: dark;"
+            data-icon="octicon-star"
+            data-size="large"
+            aria-label="Star gurbaxani/resume-builder on GitHub"
+            >Star on GitHub</a
+          >
+
+          <iframe
+            src="https://github.com/sponsors/gurbaxani/button"
+            title="Sponsor gurbaxani"
+            height="32"
+            width="114"
+            style="border: 0; border-radius: 6px"
+          ></iframe>
+        </aside>
+
+        <main class="preview-section">
+          <div class="preview-header">
+            <h2>Preview</h2>
+            <div>
+              <button class="export-btn" id="exportPDF">↪ Export PDF</button>
+              <button class="export-btn" id="exportJSON">⬇ Export JSON</button>
+              <button class="export-btn" id="importJSON">⬆ Import JSON</button>
+            </div>
+          </div>
+          <div class="preview-wrapper">
+            <div id="resumePreview" class="resume"></div>
+          </div>
+        </main>
+      </div>
+
+      <footer>
+        <p>
+          <script>
+            document.write(/\d{4}/.exec(Date())[0]);
+          </script>
+          Gurbax (Ashwini Gurbaxani). Built using
+          <a href="https://aimddb.com/" target="_blank" rel="noopener">AI</a>.
+        </p>
+      </footer>
+    </div>
+
+    <script src="script.js"></script>
+    <script async defer src="https://buttons.github.io/buttons.js"></script>
+  </body>
+</html>
