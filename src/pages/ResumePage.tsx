@@ -118,7 +118,9 @@ export default function ResumePage() {
         if (parsed.experiences) {
           parsed.experiences = parsed.experiences.map((exp: any) => ({
             ...exp,
-            description: Array.isArray(exp.description) ? exp.description : [exp.description].filter(Boolean)
+            description: Array.isArray(exp.description)
+              ? exp.description
+              : [exp.description].filter(Boolean),
           }));
         }
         return parsed;
@@ -191,10 +193,14 @@ export default function ResumePage() {
           return;
         }
         if (importedData.experiences) {
-          importedData.experiences = importedData.experiences.map((exp: any) => ({
-            ...exp,
-            description: Array.isArray(exp.description) ? exp.description : [exp.description].filter(Boolean)
-          }));
+          importedData.experiences = importedData.experiences.map(
+            (exp: any) => ({
+              ...exp,
+              description: Array.isArray(exp.description)
+                ? exp.description
+                : [exp.description].filter(Boolean),
+            }),
+          );
         }
         setFormData(importedData);
         alert("Resume imported successfully!");
@@ -352,7 +358,7 @@ export default function ResumePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 print:block">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 print:block print:overflow-visible">
           {/* Left Section - Form */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -702,7 +708,10 @@ export default function ResumePage() {
             </div>
 
             {/* Screen Content Area */}
-            <div className="bg-white overflow-auto print:hidden" id="resumePreview">
+            <div
+              className="bg-white overflow-auto print:hidden"
+              id="resumePreview"
+            >
               {formData.fullName || formData.role || formData.summary ? (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -912,7 +921,9 @@ function ExperienceForm({
                 />
                 <button
                   onClick={() => {
-                    const newDesc = experience.description.filter((_: any, i: number) => i !== index);
+                    const newDesc = experience.description.filter(
+                      (_: any, i: number) => i !== index,
+                    );
                     onUpdate("description", newDesc);
                   }}
                   className="px-3 py-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
@@ -922,7 +933,9 @@ function ExperienceForm({
               </div>
             ))}
             <button
-              onClick={() => onUpdate("description", [...experience.description, ""])}
+              onClick={() =>
+                onUpdate("description", [...experience.description, ""])
+              }
               className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg font-medium text-[13px] flex items-center justify-center gap-2 hover:bg-gray-50 hover:text-gray-700 transition-all"
             >
               <Plus size={14} />
@@ -1074,9 +1087,11 @@ function MinimalTemplate({ data }: { data: FormData }) {
                   {exp.company}
                 </div>
                 <ul className="list-disc list-outside ml-4 text-[13px] text-gray-700 leading-relaxed space-y-1">
-                  {exp.description.filter(Boolean).map((desc: string, i: number) => (
-                    <li key={i}>{desc}</li>
-                  ))}
+                  {exp.description
+                    .filter(Boolean)
+                    .map((desc: string, i: number) => (
+                      <li key={i}>{desc}</li>
+                    ))}
                 </ul>
               </div>
             ))}
@@ -1161,17 +1176,17 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
           <div className="flex flex-wrap items-center gap-4 text-[13px] text-gray-600 mb-1">
             {data.email && (
               <div className="flex items-center gap-1">
-                <Mail size={12} /> {data.email}
+                <Mail size={12} className="shrink-0" /> {data.email}
               </div>
             )}
             {data.phone && (
               <div className="flex items-center gap-1">
-                <Phone size={12} /> {data.phone}
+                <Phone size={12} className="shrink-0" /> {data.phone}
               </div>
             )}
             {data.location && (
               <div className="flex items-center gap-1">
-                <MapPin size={12} /> {data.location}
+                <MapPin size={12} className="shrink-0" /> {data.location}
               </div>
             )}
           </div>
@@ -1228,9 +1243,11 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
                   {exp.company}
                 </div>
                 <ul className="list-disc list-outside ml-4 text-[13px] text-gray-700 leading-relaxed space-y-1">
-                  {exp.description.filter(Boolean).map((desc: string, i: number) => (
-                    <li key={i}>{desc}</li>
-                  ))}
+                  {exp.description
+                    .filter(Boolean)
+                    .map((desc: string, i: number) => (
+                      <li key={i}>{desc}</li>
+                    ))}
                 </ul>
               </div>
             ))}
@@ -1299,87 +1316,103 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
 
 function ModernTemplate({ data }: { data: FormData }) {
   return (
-    <div className="flex bg-white max-w-4xl mx-auto border border-gray-200 print:border-none min-h-[297mm]">
+    <div 
+      className="flex bg-white max-w-4xl mx-auto border border-gray-200 print:border-none"
+      style={{
+        background: `linear-gradient(to right, ${data.primaryColor} 33.333333%, white 33.333333%)`
+      }}
+    >
       {/* Sidebar */}
-      <div
-        className="w-1/3 p-6 text-white"
-        style={{ backgroundColor: data.primaryColor }}
-      >
+      <div className="w-1/3 p-5 text-white print:pb-0">
         {data.photo && (
           <img
             src={data.photo}
             alt="Profile"
-            className="w-[100px] h-[100px] rounded-full object-cover mb-4 border-4 border-white/30 mx-auto"
+            className="w-[80px] h-[80px] rounded-full object-cover mb-4 border-2 border-white/30 mx-auto"
           />
         )}
-        <h1 className="text-xl font-bold mb-6 break-words text-white text-center">
+        <h1 className="text-lg font-bold mb-4 break-words text-white text-center leading-tight">
           {data.fullName || "Your Name"}
         </h1>
 
-        <div className="mb-6">
-          <div className="text-xs font-bold uppercase tracking-wider text-white mb-3">
+        <div className="mb-4">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-white mb-2">
             Contact
           </div>
           {data.email && (
             <div className="flex items-center gap-2 text-[13px] text-white/90 mb-2">
-              <Mail size={14} /> {data.email}
+              <Mail size={10} className="shrink-0" /> {data.email}
             </div>
           )}
           {data.phone && (
             <div className="flex items-center gap-2 text-[13px] text-white/90 mb-2">
-              <Phone size={14} /> {data.phone}
+              <Phone size={10} className="shrink-0" /> {data.phone}
             </div>
           )}
           {data.location && (
             <div className="flex items-center gap-2 text-[13px] text-white/90 mb-2">
-              <MapPin size={14} /> {data.location}
+              <MapPin size={10} className="shrink-0" /> {data.location}
             </div>
           )}
         </div>
 
         {data.linksPortfolio.filter((l) => l.url).length > 0 && (
-          <div className="mb-6">
-            <div className="text-xs font-bold uppercase tracking-wider text-white mb-3">
+          <div className="mb-4 last:mb-0">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-white mb-2">
               Links
             </div>
             {data.linksPortfolio
               .filter((l) => l.url)
-              .map((link, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 text-[13px] text-white/90 mb-2 break-all"
-                >
-                  <Link2 size={14} className="shrink-0" /> {link.url}
-                </div>
-              ))}
+              .map((link, idx) => {
+                const cleanUrl = link.url
+                  .replace(/^https?:\/\/(www\.)?/, "")
+                  .replace(/\/$/, "");
+                return (
+                  <div key={idx} className="flex items-start gap-2 mb-2.5">
+                    {/* <Link2 size={11} className="shrink-0 mt-[3px] text-white/70" /> */}
+                    <div className="flex flex-col min-w-0 leading-tight">
+                      {link.label && (
+                        <span className="text-[12px] font-semibold text-white">
+                          {link.label}
+                        </span>
+                      )}
+                      <span
+                        className={`break-all ${link.label ? "text-[10px] text-white/70 mt-0.5" : "text-[11px] text-white/90"}`}
+                      >
+                        {cleanUrl}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         )}
 
         {data.skills.length > 0 && (
-          <div className="mb-6">
-            <div className="text-xs font-bold uppercase tracking-wider text-white mb-2">
+          <div className="mb-4 last:mb-0">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-white mb-2">
               Skills
             </div>
-            <div className="space-y-1">
+            <ul className="list-disc list-outside ml-4 space-y-1">
               {data.skills.map((skill, index) => (
-                <div
+                <li
                   key={index}
-                  className="text-[13px] text-white/90 break-words"
+                  className="text-[10px] text-white/90 break-words"
                 >
                   {skill}
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         )}
       </div>
 
       {/* Main Content */}
-      <div className="w-2/3 p-8">
+      <div className="w-2/3 p-6 pt-5 print:pb-0">
         {data.summary && (
-          <div className="mb-6">
+          <div className="mb-4 last:mb-0">
             <div
-              className="text-[13px] font-bold uppercase tracking-wider mb-3"
+              className="text-[12px] font-bold uppercase tracking-wider mb-2"
               style={{ color: data.primaryColor }}
             >
               Profile
@@ -1391,14 +1424,14 @@ function ModernTemplate({ data }: { data: FormData }) {
         )}
 
         {data.experiences.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-4 last:mb-0">
             <div
-              className="text-[13px] font-bold uppercase tracking-wider mb-3"
+              className="text-[12px] font-bold uppercase tracking-wider mb-2"
               style={{ color: data.primaryColor }}
             >
               Experience
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {data.experiences.map((exp) => (
                 <div key={exp.id}>
                   <div className="font-bold text-[13px] text-gray-900 mb-1">
@@ -1414,9 +1447,11 @@ function ModernTemplate({ data }: { data: FormData }) {
                     <div className="text-xs text-gray-600">{exp.duration}</div>
                   </div>
                   <ul className="list-disc list-outside ml-4 text-[13px] text-gray-700 leading-relaxed space-y-1">
-                    {exp.description.filter(Boolean).map((desc: string, i: number) => (
-                      <li key={i}>{desc}</li>
-                    ))}
+                    {exp.description
+                      .filter(Boolean)
+                      .map((desc: string, i: number) => (
+                        <li key={i}>{desc}</li>
+                      ))}
                   </ul>
                 </div>
               ))}
@@ -1425,14 +1460,14 @@ function ModernTemplate({ data }: { data: FormData }) {
         )}
 
         {data.education.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-4 last:mb-0">
             <div
-              className="text-[13px] font-bold uppercase tracking-wider mb-3"
+              className="text-[12px] font-bold uppercase tracking-wider mb-2"
               style={{ color: data.primaryColor }}
             >
               Education
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {data.education.map((edu) => (
                 <div key={edu.id}>
                   <div className="font-bold text-[13px] text-gray-900 mb-1">
