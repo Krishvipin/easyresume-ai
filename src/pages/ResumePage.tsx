@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -15,6 +15,7 @@ import {
   Mail,
   Phone,
   MapPin,
+  RotateCcw,
 } from "lucide-react";
 
 interface FormData {
@@ -42,7 +43,7 @@ interface FormData {
     position: string;
     company: string;
     duration: string;
-    description: string;
+    description: string[];
   }>;
 
   // Education
@@ -62,16 +63,16 @@ const initialFormData: FormData = {
   template: "minimal",
   primaryColor: "#1e3a8a",
   secondaryColor: "#475569",
-  fullName: "Prashanth",
+  fullName: "Sarah",
   role: "UIUX Designer",
-  email: "prashanth@email.com",
+  email: "Sarah@email.com",
   phone: "+91 9962139116",
   location: "Chennai",
   experience: 6,
   summary: "Tell me about yourself short...",
   linksPortfolio: [
-    { label: "LinkedIn", url: "prashanth@linkedin.com" },
-    { label: "Portfolio", url: "prashanth.com" },
+    { label: "LinkedIn", url: "Sarah@linkedin.com" },
+    { label: "Portfolio", url: "Sarah.com" },
   ],
   experiences: [
     {
@@ -79,14 +80,14 @@ const initialFormData: FormData = {
       position: "Designer",
       company: "Google",
       duration: "Jan 2020 - Jan 2026",
-      description: "Write about your job experience..",
+      description: ["Write about your job experience.."],
     },
     {
       id: "2",
       position: "Designer",
       company: "Google",
       duration: "Jan 2020 - Jan 2026",
-      description: "Write about your job experience..",
+      description: ["Write about your job experience.."],
     },
   ],
   education: [
@@ -109,7 +110,31 @@ const initialFormData: FormData = {
 };
 
 export default function ResumePage() {
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [formData, setFormData] = useState<FormData>(() => {
+    const saved = localStorage.getItem("easyresume_data");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.experiences) {
+          parsed.experiences = parsed.experiences.map((exp: any) => ({
+            ...exp,
+            description: Array.isArray(exp.description) ? exp.description : [exp.description].filter(Boolean)
+          }));
+        }
+        return parsed;
+      } catch (e) {
+        return initialFormData;
+      }
+    }
+    return initialFormData;
+  });
+
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("easyresume_data", JSON.stringify(formData));
+  }, [formData]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -165,6 +190,12 @@ export default function ResumePage() {
           alert("Invalid JSON: This file was not exported from EasyResume.");
           return;
         }
+        if (importedData.experiences) {
+          importedData.experiences = importedData.experiences.map((exp: any) => ({
+            ...exp,
+            description: Array.isArray(exp.description) ? exp.description : [exp.description].filter(Boolean)
+          }));
+        }
         setFormData(importedData);
         alert("Resume imported successfully!");
       } catch (error) {
@@ -179,6 +210,12 @@ export default function ResumePage() {
 
   const handleExportPDF = () => {
     window.print();
+  };
+
+  const handleReset = () => {
+    localStorage.removeItem("easyresume_data");
+    setFormData(initialFormData);
+    setShowResetConfirm(false);
   };
 
   const handleInputChange = (
@@ -203,7 +240,7 @@ export default function ResumePage() {
           position: "",
           company: "",
           duration: "",
-          description: "",
+          description: [""],
         },
       ],
     }));
@@ -216,7 +253,7 @@ export default function ResumePage() {
     }));
   };
 
-  const updateExperience = (id: string, field: string, value: string) => {
+  const updateExperience = (id: string, field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       experiences: prev.experiences.map((exp) =>
@@ -626,6 +663,13 @@ export default function ResumePage() {
 
               {/* Download Buttons */}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowResetConfirm(true)}
+                  className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-all mr-2"
+                >
+                  <RotateCcw size={14} />
+                  Reset
+                </button>
                 <input
                   type="file"
                   accept="application/json"
@@ -657,8 +701,8 @@ export default function ResumePage() {
               </div>
             </div>
 
-            {/* Content Area */}
-            <div className="bg-white overflow-auto" id="resumePreview">
+            {/* Screen Content Area */}
+            <div className="bg-white overflow-auto print:hidden" id="resumePreview">
               {formData.fullName || formData.role || formData.summary ? (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -687,9 +731,77 @@ export default function ResumePage() {
                 </div>
               )}
             </div>
+
+            {/* Print Content Area (Table hack for repeating margins) */}
+            <table className="hidden print:table w-full bg-white">
+              <thead className="print:table-header-group">
+                <tr>
+                  <td>
+                    <div className="h-12 text-transparent">&nbsp;</div>
+                  </td>
+                </tr>
+              </thead>
+              <tbody className="print:table-row-group">
+                <tr>
+                  <td>
+                    {formData.fullName || formData.role || formData.summary ? (
+                      <div>
+                        {formData.template === "minimal" && (
+                          <MinimalTemplate data={formData} />
+                        )}
+                        {formData.template === "professional" && (
+                          <ProfessionalTemplate data={formData} />
+                        )}
+                        {formData.template === "modern" && (
+                          <ModernTemplate data={formData} />
+                        )}
+                      </div>
+                    ) : null}
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot className="print:table-footer-group">
+                <tr>
+                  <td>
+                    <div className="h-12 text-transparent">&nbsp;</div>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </motion.div>
         </div>
       </div>
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm print:hidden">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl"
+          >
+            <h3 className="text-[18px] font-semibold text-gray-900 mb-2">
+              Reset Resume?
+            </h3>
+            <p className="text-[14px] text-gray-600 mb-6">
+              Are you sure you want to reset all data to the default template?
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-4 py-2 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-100 transition-colors border border-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-4 py-2 rounded-lg text-[14px] font-medium text-white bg-red-500 hover:bg-red-600 transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
@@ -749,7 +861,7 @@ function ExperienceForm({
   onRemove,
 }: {
   experience: any;
-  onUpdate: (field: string, value: string) => void;
+  onUpdate: (field: string, value: any) => void;
   onRemove: () => void;
 }) {
   return (
@@ -784,11 +896,39 @@ function ExperienceForm({
           <label className="block text-[14px] font-medium text-gray-700 mb-2">
             Description
           </label>
-          <textarea
-            value={experience.description}
-            onChange={(e) => onUpdate("description", e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-[14px] resize-none h-24 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-          />
+          <div className="space-y-3">
+            {experience.description.map((desc: string, index: number) => (
+              <div key={index} className="flex gap-2">
+                <input
+                  type="text"
+                  value={desc}
+                  onChange={(e) => {
+                    const newDesc = [...experience.description];
+                    newDesc[index] = e.target.value;
+                    onUpdate("description", newDesc);
+                  }}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  placeholder="Write a bullet point..."
+                />
+                <button
+                  onClick={() => {
+                    const newDesc = experience.description.filter((_: any, i: number) => i !== index);
+                    onUpdate("description", newDesc);
+                  }}
+                  className="px-3 py-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => onUpdate("description", [...experience.description, ""])}
+              className="w-full py-2 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg font-medium text-[13px] flex items-center justify-center gap-2 hover:bg-gray-50 hover:text-gray-700 transition-all"
+            >
+              <Plus size={14} />
+              Add Bullet Point
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -933,9 +1073,11 @@ function MinimalTemplate({ data }: { data: FormData }) {
                 <div className="text-[13px] text-gray-600 mb-1">
                   {exp.company}
                 </div>
-                <div className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-                  {exp.description}
-                </div>
+                <ul className="list-disc list-outside ml-4 text-[13px] text-gray-700 leading-relaxed space-y-1">
+                  {exp.description.filter(Boolean).map((desc: string, i: number) => (
+                    <li key={i}>{desc}</li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
@@ -1085,9 +1227,11 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
                 >
                   {exp.company}
                 </div>
-                <div className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-                  {exp.description}
-                </div>
+                <ul className="list-disc list-outside ml-4 text-[13px] text-gray-700 leading-relaxed space-y-1">
+                  {exp.description.filter(Boolean).map((desc: string, i: number) => (
+                    <li key={i}>{desc}</li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
@@ -1269,9 +1413,11 @@ function ModernTemplate({ data }: { data: FormData }) {
                     </div>
                     <div className="text-xs text-gray-600">{exp.duration}</div>
                   </div>
-                  <div className="text-[13px] text-gray-700 leading-relaxed whitespace-pre-line">
-                    {exp.description}
-                  </div>
+                  <ul className="list-disc list-outside ml-4 text-[13px] text-gray-700 leading-relaxed space-y-1">
+                    {exp.description.filter(Boolean).map((desc: string, i: number) => (
+                      <li key={i}>{desc}</li>
+                    ))}
+                  </ul>
                 </div>
               ))}
             </div>
