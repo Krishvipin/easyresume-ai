@@ -13,6 +13,7 @@ import ResumePage from "./pages/ResumePage";
 import ATSCheckerPage from "./pages/ATSCheckerPage";
 import ModifyResumePage from "./pages/ModifyResumePage";
 import CoverLetterPage from "./pages/CoverLetterPage";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export default function App() {
   return (
@@ -23,7 +24,14 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/resume-builder" element={<ResumePage />} />
+          <Route 
+            path="/resume-builder" 
+            element={
+              <ProtectedRoute>
+                <ResumePage />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/ats-checker" element={<ATSCheckerPage />} />
           <Route path="/modify-resume" element={<ModifyResumePage />} />
           <Route path="/cover-letter" element={<CoverLetterPage />} />

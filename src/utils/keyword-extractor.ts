@@ -51,7 +51,7 @@ export const extractKeywords = (text: string): string[] => {
 
   // 2. Extract words, including common tech special characters like +, #, .
   // We want to keep C++, C#, .NET, Node.js, etc.
-  const words = processed.match(/[a-z0-9+#.]+/g) ?? [];
+  const words = (processed.match(/[a-z0-9+#.]+/g) || []) as string[];
 
   // 3. Filter stopwords and short/meaningless strings
   // But keep important short ones like 'c', 'go', 'r' if they are common in tech
