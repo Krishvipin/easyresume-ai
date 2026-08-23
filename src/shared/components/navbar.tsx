@@ -4,27 +4,10 @@ import { FileCheck, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { NAV_LINKS } from "../constants/navigation";
 import { cn } from "../../lib/utils";
-import { useAuth } from "../hooks/use-auth";
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { user, loading, signIn } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
-
-  const handleAuthAction = async () => {
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      try {
-        await signIn();
-        navigate("/dashboard");
-      } catch (error) {
-        // Error already logged in hook
-      }
-    }
-    setIsOpen(false);
-  };
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 print:hidden">
@@ -80,55 +63,6 @@ export const Navbar = () => {
             >
               Donate
             </button>
-            {!loading && (
-              user ? (
-                <Link
-                  to="/dashboard"
-                  style={{
-                    height: "43px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingTop: "12px",
-                    paddingRight: "24px",
-                    paddingBottom: "12px",
-                    paddingLeft: "24px",
-                    borderRadius: "32px",
-                    backgroundColor: "black",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    transition: "all 0.2s ease"
-                  }}
-                  className="hover:opacity-80 active:scale-95 shadow-sm"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <button
-                  onClick={handleAuthAction}
-                  style={{
-                    height: "43px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingTop: "12px",
-                    paddingRight: "24px",
-                    paddingBottom: "12px",
-                    paddingLeft: "24px",
-                    borderRadius: "32px",
-                    backgroundColor: "black",
-                    color: "white",
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    transition: "all 0.2s ease"
-                  }}
-                  className="hover:opacity-80 active:scale-95 shadow-sm"
-                >
-                  Sign in
-                </button>
-              )
-            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -172,26 +106,6 @@ export const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              <div className="pt-4">
-                {!loading && (
-                  user ? (
-                    <Link
-                      to="/dashboard"
-                      onClick={() => setIsOpen(false)}
-                      className="block w-full text-center bg-black text-white px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-80"
-                    >
-                      Dashboard
-                    </Link>
-                  ) : (
-                    <button
-                      onClick={handleAuthAction}
-                      className="block w-full text-center bg-black text-white px-6 py-3 rounded-xl text-sm font-semibold hover:opacity-80"
-                    >
-                      Sign in
-                    </button>
-                  )
-                )}
-              </div>
             </div>
           </motion.div>
         )}

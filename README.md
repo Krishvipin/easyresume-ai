@@ -4,7 +4,7 @@
 
 # EasyResume AI
 
-> **Premium ATS Resume Builder Dashboard** — Create, optimize, and track job-application resumes with AI-powered insights. Built with React 19, TypeScript, Vite, TailwindCSS v4, Firebase Auth, Dexie.js (IndexedDB), Gemini AI, and OpenRouter.
+> **Premium ATS Resume Builder Dashboard** — Create, optimize, and track job-application resumes with AI-powered insights. Built with React 19, TypeScript, Vite, TailwindCSS v4, Gemini AI, and OpenRouter.
 
 ---
 
@@ -38,11 +38,10 @@
 
 1. **Build** professional resumes with a real-time, live-preview editor.
 2. **Check** ATS (Applicant Tracking System) compatibility scores against specific job descriptions.
-3. **Modify** existing resumes to better match target roles.
-4. **Generate** personalized cover letters from structured inputs.
-5. **Track** application projects through a dashboard with stats and filters.
+3. **Modify** existing resumes to better match target roles (UI Implemented).
+4. **Generate** personalized cover letters from structured inputs (UI Implemented).
 
-The entire application runs in the browser. Resume data is stored locally in IndexedDB (via Dexie.js), and AI analysis calls are made directly from the client to Gemini and OpenRouter APIs. Firebase provides Google OAuth authentication and analytics.
+The entire application runs in the browser. Resume data is stored locally in localStorage, and AI analysis calls are made directly from the client to Gemini and OpenRouter APIs.
 
 ---
 
@@ -51,17 +50,12 @@ The entire application runs in the browser. Resume data is stored locally in Ind
 ### 1. Landing Page (`/`)
 - Animated hero section with Framer Motion entrance transitions.
 - Skeleton resume card visual previews (left, center, right with rotation effects).
-- One-click Google Sign-In → redirects to Dashboard.
 
-### 2. Dashboard (`/dashboard`)
-- **Stats Cards** — Real-time counts: Total Projects, Applied, Interviews, Offers.
-- **Projects Table** — Filterable list of all resume projects with status badges (Draft / Applied / Interview / Offer / Rejected).
-- **New Project Modal** — Create a project by entering name, company, and role.
-- **Empty State** — Prompts first-time users to create their first project.
+
 
 ### 3. Resume Builder (`/resume-builder`)
 - **Form-based editor** with sections for:
-  - Template selection (Minimal, Modern) with primary/secondary color pickers.
+  - Template selection (Minimal, Modern, Professional) with primary/secondary color pickers.
   - Profile photo upload (base64, stored in localStorage).
   - Personal information (name, role, email, phone, location, years of experience, summary).
   - LinkedIn & Portfolio links.
@@ -69,9 +63,10 @@ The entire application runs in the browser. Resume data is stored locally in Ind
   - Education entries (degree, school, duration, details).
   - Skills list.
 - **Live Preview** — Right-side real-time preview that updates as you type.
-- **Two Resume Templates**:
+- **Three Resume Templates**:
   - `MinimalTemplate` — Clean, single-column layout.
   - `ModernTemplate` — Two-column layout with a colored sidebar.
+  - `ProfessionalTemplate` — A classic, professional format tailored for corporate roles.
 - **Export Options**:
   - **Download PDF** — Uses `window.print()` with print-optimized CSS (`@media print`).
   - **Download JSON** — Exports the complete resume data as a `.json` file (stamped with `_isEasyResume: true` for validation).
@@ -83,7 +78,7 @@ The entire application runs in the browser. Resume data is stored locally in Ind
 - Two input areas: resume text and job description.
 - **File upload support** — Accepts `.txt`, `.pdf`, and `.docx` files; extracts text automatically.
 - **Three-tier AI fallback strategy**:
-  1. **Gemini AI** (primary) — Structured ATS analysis with score, suggestions, and improvements.
+  1. **Gemini AI** (primary) — Structured ATS analysis with score, suggestions, and improvements (using `gemini-1.5-flash`).
   2. **OpenRouter** (secondary) — Deep recruiter-grade analysis with score, summary, strengths, suggestions, missing keywords, and improvements.
   3. **Manual keyword scoring** (fallback) — Local keyword-overlap algorithm when both AI providers fail.
 - **Results display**: Color-coded score card (green ≥80%, amber ≥50%, red <50%), executive summary, strengths, missing keywords as tags, actionable suggestions, and improvements.
@@ -91,19 +86,18 @@ The entire application runs in the browser. Resume data is stored locally in Ind
 - **Loading overlay** with animated step-through messages.
 
 ### 5. Modify Resume (`/modify-resume`)
-- Paste resume + job description + target role.
-- Generates a modified resume optimized for the target position.
-- Download modified resume as `.txt`.
-- *Note: Currently uses placeholder AI logic (marked `TODO` for full AI integration).*
+- Complete UI for inputting current resume, target role, and job description.
+- Generates a tailored version of the resume.
+- Features real-time loader state and file download capabilities.
+- *Note: Currently uses placeholder simulation logic (marked `TODO` for full AI integration).*
 
 ### 6. Cover Letter Generator (`/cover-letter`)
-- Structured input form:
+- Comprehensive structured input form:
   - User info (name, email, phone, location).
-  - Job details (role, company, hiring manager) — add/remove multiple entries.
-  - Job description text.
-- Generates a personalized cover letter.
-- Download as `.txt`.
-- *Note: Currently uses placeholder AI logic (marked `TODO` for full AI integration).*
+  - Job details (role, company, hiring manager) — supports adding/removing multiple entries dynamically.
+  - Complete job description text area.
+- Dedicated output UI with download feature.
+- *Note: Currently uses placeholder simulation logic (marked `TODO` for full AI integration).*
 
 ---
 
@@ -120,19 +114,19 @@ The entire application runs in the browser. Resume data is stored locally in Ind
 │  └──────────┘  └───────────────┘  └──────────────────────────┘  │
 │       │                                                         │
 │  ┌────┴────────────────────────────────────────┐                │
-│  │              Page Components                 │                │
-│  │  Landing │ Dashboard │ Resume │ ATS │ ...    │                │
-│  └──────────────────────────────────────────────┘                │
-│       │                         │                                │
+│  │              Page Components                │                │
+│  │  Landing │ Dashboard │ Resume │ ATS │ ...   │                │
+│  └──────────────────────────────────────────────┘               │
+│       │                         │                               │
 │  ┌────┴──────┐           ┌──────┴──────────────┐                │
-│  │ Firebase  │           │   AI Providers       │                │
-│  │ Auth +    │           │  ┌─ Gemini API       │                │
-│  │ Analytics │           │  └─ OpenRouter API   │                │
+│  │ Firebase  │           │   AI Providers      │                │
+│  │ Auth +    │           │  ┌─ Gemini API      │                │
+│  │ Analytics │           │  └─ OpenRouter API  │                │
 │  └───────────┘           └─────────────────────┘                │
 │                                                                 │
-│  ┌──────────────────────────────────────────────┐                │
-│  │  localStorage: "easyresume_data" (Resume)    │                │
-│  └──────────────────────────────────────────────┘                │
+│  ┌──────────────────────────────────────────────┐               │
+│  │  localStorage: "easyresume_data" (Resume)    │               │
+│  └──────────────────────────────────────────────┘               │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -141,12 +135,9 @@ The entire application runs in the browser. Resume data is stored locally in Ind
 | Decision | Rationale |
 |---|---|
 | **Client-side only** (no backend server) | Zero hosting cost, instant startup, full data privacy — all data stays in the user's browser. |
-| **IndexedDB via Dexie** for project data | Structured queries, large storage capacity, async API — ideal for project CRUD. |
 | **localStorage** for resume builder data | Simpler persistence for a single-document workflow (the active resume form). |
 | **Dual AI providers** (Gemini + OpenRouter) | Redundancy — if one fails, the other provides results. Manual keyword scoring as final fallback. |
-| **Firebase Auth (Google only)** | Fast setup, trusted OAuth provider, integrates with Firebase Analytics. |
 | **TailwindCSS v4** | Utility-first CSS with new `@theme` directive for design tokens. |
-| **Zustand** for global state | Minimal boilerplate compared to Redux; perfect for a single `projects` store. |
 
 ---
 
@@ -158,12 +149,9 @@ The entire application runs in the browser. Resume data is stored locally in Ind
 | **Language** | TypeScript | 5.8.x |
 | **Bundler** | Vite | 6.x |
 | **Styling** | TailwindCSS | 4.x |
-| **State Management** | Zustand | 5.x |
 | **Routing** | React Router DOM | 7.x |
-| **Animations** | Framer Motion | 12.x |
+| **Animations** | Framer Motion & Motion | 12.x |
 | **Icons** | Lucide React | 0.546.x |
-| **Local Database** | Dexie.js (IndexedDB) | 4.x |
-| **Auth & Analytics** | Firebase | 12.x |
 | **AI — Primary** | Google Generative AI (`@google/genai`) | 1.52.x |
 | **AI — Secondary** | OpenRouter API (REST) | — |
 | **File Parsing** | pdf.js (`pdfjs-dist`) + Mammoth.js | 5.x / 1.x |
@@ -199,38 +187,20 @@ easyresume-ai-codex/
     │
     ├── pages/                    # Route-level page components
     │   ├── LandingPage.tsx       # Hero + animated resume skeletons
-    │   ├── DashboardPage.tsx     # Project management dashboard
-    │   ├── ResumePage.tsx        # Full resume builder with live preview (1,495 lines)
+    │   ├── ResumePage.tsx        # Full resume builder with live preview & templates
     │   ├── ATSCheckerPage.tsx    # ATS score checker with AI analysis
-    │   ├── ModifyResumePage.tsx  # AI resume modification tool
-    │   ├── CoverLetterPage.tsx   # AI cover letter generator
+    │   ├── ModifyResumePage.tsx  # Interactive UI for AI resume tailoring
+    │   ├── CoverLetterPage.tsx   # Interactive UI for AI cover letter generation
     │   └── PlaceholderPage.tsx   # Generic placeholder for future pages
     │
-    ├── components/               # Dashboard-specific components
-    │   ├── StatsCards.tsx         # 4-stat card grid (Total, Applied, Interviews, Offers)
-    │   ├── ProjectsTable.tsx     # Filterable project table
-    │   ├── ProjectRow.tsx        # Individual table row with status badge
-    │   ├── NewProjectModal.tsx   # Animated modal for creating projects
-    │   └── EmptyState.tsx        # Empty dashboard prompt
     │
+    ├── components/               # Domain-specific components
     ├── shared/                   # Cross-cutting shared code
     │   ├── components/
-    │   │   ├── navbar.tsx        # Sticky top navbar with mobile hamburger menu
+    │   │   ├── navbar.tsx        # Sticky top navbar with mobile menu, auth-aware
     │   │   └── footer.tsx        # Site footer with social links
-    │   ├── hooks/
-    │   │   └── use-auth.ts       # Firebase auth hook (user, loading, signIn, logout)
     │   └── constants/
     │       └── navigation.ts     # NAV_LINKS and SOCIAL_LINKS arrays
-    │
-    ├── store/
-    │   └── use-project-store.ts  # Zustand store for project CRUD
-    │
-    ├── db/
-    │   └── project-service.ts    # Dexie database schema + CRUD operations
-    │
-    ├── firebase/
-    │   ├── config.ts             # Firebase app initialization (env-driven)
-    │   └── auth.ts               # Google Auth provider, signIn, signOut
     │
     ├── lib/
     │   ├── gemini.ts             # Gemini AI ATS analysis function
@@ -240,80 +210,17 @@ easyresume-ai-codex/
     ├── utils/
     │   ├── file-parser.ts        # Extract text from PDF, DOCX, TXT files
     │   ├── keyword-extractor.ts  # ATS keyword extraction & scoring algorithm
-    │   └── create-empty-project.ts  # Factory for new ResumeProject objects
-    │
-    ├── types/
-    │   └── resume.ts             # TypeScript interfaces (ResumeProject, ResumeData, ProjectStatus)
     │
     └── reference/                # Design reference assets (not used at runtime)
-        ├── AI studio reference/
-        ├── figma export/
-        ├── mimic/
-        └── resume templates/
 ```
 
 ---
 
 ## Data Models & Types
 
-### `ProjectStatus`
-
-```typescript
-type ProjectStatus = "Draft" | "Applied" | "Interview" | "Offer" | "Rejected";
-```
-
-### `ResumeData`
-
-The structured resume content stored per project:
-
-```typescript
-interface ResumeData {
-  personalInfo: {
-    fullName: string;
-    email: string;
-    phone: string;
-    location: string;
-    website?: string;
-    linkedin?: string;
-  };
-  experience: {
-    id: string;
-    company: string;
-    role: string;
-    startDate: string;
-    endDate: string;
-    description: string[];
-  }[];
-  education: {
-    id: string;
-    school: string;
-    degree: string;
-    date: string;
-  }[];
-  skills: string[];
-}
-```
-
-### `ResumeProject`
-
-Top-level project entity stored in IndexedDB:
-
-```typescript
-interface ResumeProject {
-  id: string;           // crypto.randomUUID()
-  name: string;         // User-defined project name
-  company: string;      // Target company
-  role: string;         // Target role
-  status: ProjectStatus;
-  updatedAt: number;    // Date.now() timestamp
-  createdAt: number;    // Date.now() timestamp
-  resumeData: ResumeData;
-}
-```
-
 ### Resume Builder `FormData` (local to ResumePage)
 
-The resume builder uses a separate, richer data shape stored in `localStorage`:
+The resume builder uses a comprehensive form data schema stored in `localStorage`:
 
 ```typescript
 interface FormData {
@@ -350,17 +257,6 @@ interface FormData {
 ---
 
 ## State Management
-
-### Zustand Store: `useProjectStore`
-
-**Location:** `src/store/use-project-store.ts`
-
-| Method | Description |
-|---|---|
-| `fetchProjects()` | Loads all projects from IndexedDB, sorted by `updatedAt` descending. |
-| `setCurrentProject(project)` | Sets the currently active project in memory. |
-| `createProject(name, company, role)` | Creates a new project with empty `ResumeData`, persists to IndexedDB, refreshes list. |
-| `deleteProject(id)` | Deletes from IndexedDB, clears `currentProject` if it was the deleted one. |
 
 ### localStorage Persistence
 
@@ -405,25 +301,6 @@ A fully local, zero-API fallback:
 - **`extractKeywords(text)`** — Normalizes text, replaces tech phrase variations (e.g., "front end" → "frontend"), filters stopwords, returns unique keywords.
 - **`calculateATSScore(resume, jobDescription)`** — Computes `score` as `(matched / total job keywords) × 100`, returns `{ score, matched[], missing[] }`.
 
-### ATS Checker Fallback Chain
-
-```
-User clicks "Analyze Match"
-       │
-       ▼
-  ┌─ Try Gemini AI ──────────────────┐
-  │  Success? → Display AI results   │
-  │  Failure? ▼                      │
-  ├─ Calculate manual keyword score  │
-  │  Then try OpenRouter ────────────┤
-  │  Success? → Display AI results   │
-  │  Timeout/Failure? ▼              │
-  └─ Use manual score + static tips  │
-       │                              │
-       ▼                              │
-  Display results ◄───────────────────┘
-```
-
 ---
 
 ## Routing & Pages
@@ -433,22 +310,10 @@ User clicks "Analyze Match"
 | Path | Component | Description |
 |---|---|---|
 | `/` | `LandingPage` | Hero section with animated resume previews |
-| `/dashboard` | `DashboardPage` | Project management hub |
-| `/resume-builder` | `ResumePage` | Form editor with live preview |
+| `/resume-builder` | `ResumePage` | Protected form editor with live preview |
 | `/ats-checker` | `ATSCheckerPage` | AI-powered ATS analysis |
-| `/modify-resume` | `ModifyResumePage` | AI resume tailoring |
-| `/cover-letter` | `CoverLetterPage` | AI cover letter generation |
-
-**Navigation links** are defined in `src/shared/constants/navigation.ts`:
-
-```typescript
-const NAV_LINKS = [
-  { label: "ATS Checker",    href: "/ats-checker" },
-  { label: "Resume Builder", href: "/resume-builder" },
-  { label: "Modify Resume",  href: "/modify-resume" },
-  { label: "Cover Letter",   href: "/cover-letter" },
-];
-```
+| `/modify-resume` | `ModifyResumePage` | UI for AI resume tailoring |
+| `/cover-letter` | `CoverLetterPage` | UI for AI cover letter generation |
 
 ---
 
@@ -458,18 +323,8 @@ const NAV_LINKS = [
 
 | Component | File | Description |
 |---|---|---|
-| `Navbar` | `src/shared/components/navbar.tsx` | Sticky top navbar, desktop nav links, mobile hamburger, auth-aware (Sign In / Dashboard), Donate button. Uses logo from `/assets/logos/EasyResume AI navbar.svg`. |
-| `Footer` | `src/shared/components/footer.tsx` | Branding, social links (GitHub, LinkedIn, Mail, X), copyright. Uses logo from `/assets/logos/EasyResume AI.svg`. |
-
-### Dashboard Components
-
-| Component | File | Description |
-|---|---|---|
-| `StatsCards` | `src/components/StatsCards.tsx` | 4-column stat cards derived from project data. |
-| `ProjectsTable` | `src/components/ProjectsTable.tsx` | Searchable table with column headers. |
-| `ProjectRow` | `src/components/ProjectRow.tsx` | Table row with status badge styling, relative time display via `date-fns`. |
-| `NewProjectModal` | `src/components/NewProjectModal.tsx` | Animated modal (Framer Motion) with backdrop blur. |
-| `EmptyState` | `src/components/EmptyState.tsx` | Dashed-border prompt card for empty dashboards. |
+| `Navbar` | `src/shared/components/navbar.tsx` | Sticky top navbar, desktop nav links, mobile hamburger, auth-aware (Sign In / Dashboard), Donate button. |
+| `Footer` | `src/shared/components/footer.tsx` | Branding, social links (GitHub, LinkedIn, Mail, X), copyright. |
 
 ### Resume Builder Internal Components (inside `ResumePage.tsx`)
 
@@ -481,8 +336,7 @@ const NAV_LINKS = [
 | `EducationForm` | Multi-field form for a single education entry. |
 | `MinimalTemplate` | Resume preview — single-column, clean design. |
 | `ModernTemplate` | Resume preview — two-column layout with colored sidebar. |
-| `ProfessionalTemplate` | Resume preview (referenced but unused currently). |
-| `ResumeSkeleton` | Animated skeleton card used on the landing page. |
+| `ProfessionalTemplate` | Resume preview — classic structured layout for corporate roles. |
 
 ---
 
@@ -512,74 +366,9 @@ const NAV_LINKS = [
 - **Inter** (400, 500, 600, 700) — Body text, UI labels.
 - **Bricolage Grotesque** (600, 700, 800) — Headings, display text.
 
-Loaded via Google Fonts CDN.
-
-### Utility Classes
-
-| Class | Purpose |
-|---|---|
-| `.glass-morphism` | `bg-white/80 backdrop-blur-md` — frosted glass effect |
-| `.card-hover` | `hover:border-gray-300 hover:shadow-md` — interactive card elevation |
-
-### Color Palette
-
-| Usage | Color | Hex |
-|---|---|---|
-| Primary / Text | Black | `#000000` |
-| Success / CTA | Green | `#27AE60` |
-| Secondary text | Gray | `#7A7A8C` |
-| Body text | Dark gray | `#4A4A57` |
-| Background | Off-white | `#fcfcfc` |
-| Borders | Light gray | `#DADAE3`, `#E5E7EB`, `#f1f1f1` |
-| Links (ATS page) | Blue | `#0066FF` |
-
 ---
 
-## Authentication
 
-**Provider:** Firebase Authentication (Google OAuth popup)
-
-### Flow
-
-1. User clicks **"Sign In"** or **"Get Started"** → triggers `loginWithGoogle()`.
-2. Firebase opens Google OAuth popup → returns `User` object.
-3. `useAuth` hook listens to `onAuthStateChanged` and exposes `{ user, loading, signIn, logout }`.
-4. Navbar and Landing Page conditionally render "Sign In" vs "Dashboard" based on auth state.
-
-### Files
-
-| File | Purpose |
-|---|---|
-| `src/firebase/config.ts` | Initializes Firebase app + Analytics from `VITE_FIREBASE_*` env vars. |
-| `src/firebase/auth.ts` | `loginWithGoogle()` and `logout()` functions. |
-| `src/shared/hooks/use-auth.ts` | React hook wrapping Firebase auth state. |
-
----
-
-## Local Database (Dexie / IndexedDB)
-
-**Database name:** `EasyResumeDB`
-**Schema version:** 1
-
-### Schema
-
-```typescript
-this.version(1).stores({
-  projects: "id, name, company, status, updatedAt",
-});
-```
-
-### Service API (`projectService`)
-
-| Method | Description |
-|---|---|
-| `getAllProjects()` | Returns all projects ordered by `updatedAt` descending. |
-| `getProject(id)` | Returns a single project by ID. |
-| `createProject(project)` | Inserts a new project. |
-| `updateProject(id, updates)` | Partial update + auto-sets `updatedAt` to `Date.now()`. |
-| `deleteProject(id)` | Removes a project by ID. |
-
----
 
 ## Environment Variables
 
@@ -597,26 +386,9 @@ VITE_OPENROUTER_API_KEY="your-openrouter-api-key"
 # Optional: OpenRouter timeout in seconds (default: 60)
 VITE_OPENROUTER_TIMEOUT_SECONDS=60
 
-# Firebase Configuration (all accessed via import.meta.env)
-VITE_FIREBASE_API_KEY="your-firebase-api-key"
-VITE_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
-VITE_FIREBASE_PROJECT_ID="your-project-id"
-VITE_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
-VITE_FIREBASE_MESSAGING_SENDER_ID="your-sender-id"
-VITE_FIREBASE_APP_ID="your-app-id"
-VITE_FIREBASE_MEASUREMENT_ID="G-XXXXXXXXXX"
-
 # App URL (AI Studio injects automatically)
 APP_URL="http://localhost:3000"
 ```
-
-### How Env Vars Are Consumed
-
-| Variable | Method | Where |
-|---|---|---|
-| `GEMINI_API_KEY` | `process.env.GEMINI_API_KEY` via Vite `define` | `src/lib/gemini.ts` |
-| `VITE_OPENROUTER_API_KEY` | `import.meta.env.VITE_OPENROUTER_API_KEY` | `src/lib/openrouter.ts` |
-| `VITE_FIREBASE_*` | `import.meta.env.VITE_FIREBASE_*` | `src/firebase/config.ts` |
 
 ---
 
@@ -627,7 +399,6 @@ APP_URL="http://localhost:3000"
 - **Node.js** ≥ 18
 - A **Gemini API key** (from [Google AI Studio](https://aistudio.google.com/))
 - *(Optional)* An **OpenRouter API key** (from [openrouter.ai](https://openrouter.ai/))
-- *(Optional)* A **Firebase project** for auth & analytics
 
 ### Installation
 
@@ -677,25 +448,16 @@ The app will be available at **http://localhost:3000**.
 - The form panel is hidden via `print:hidden`, and only the preview renders.
 - Color-adjust properties ensure backgrounds/colors print correctly.
 
-### ATS Checker — File Upload
+### ATS Checker — File Upload & Export
 
 - Supports `.txt`, `.pdf`, and `.docx` files.
-- **PDF parsing:** Uses `pdfjs-dist` with a CDN-hosted worker (`pdf.worker.min.mjs`).
-- **DOCX parsing:** Uses `mammoth.js` to extract raw text.
-- **TXT/MD:** Simple `FileReader.readAsText()`.
-
-### ATS Checker — Results Export
-
-- **Copy TXT:** Copies formatted results to clipboard.
-- **Download TXT:** Triggers a `ATS_Review_Results.txt` file download.
+- **PDF parsing:** Uses `pdfjs-dist` with a CDN-hosted worker.
+- **DOCX parsing:** Uses `mammoth.js`.
+- **Export:** Copy to clipboard or download as a `.txt` file.
 
 ---
 
 ## Deployment
-
-### Google AI Studio
-
-This app was originally scaffolded for **Google AI Studio** deployment. The `metadata.json` contains app metadata, and the `.env.example` documents the `GEMINI_API_KEY` and `APP_URL` variables that AI Studio injects automatically at runtime.
 
 ### Manual Deployment
 
@@ -704,31 +466,8 @@ This app was originally scaffolded for **Google AI Studio** deployment. The `met
 npm run build
 
 # The output is in dist/ — deploy to any static hosting:
-# - Vercel
-# - Netlify
-# - Firebase Hosting
-# - Cloudflare Pages
-# - Any static file server
+# - Vercel, Netlify, Firebase Hosting, Cloudflare Pages, etc.
 ```
-
-### Vite Configuration Notes
-
-- **Path alias:** `@` maps to the project root (configured in both `vite.config.ts` and `tsconfig.json`).
-- **HMR:** Can be disabled via `DISABLE_HMR=true` env var (used by AI Studio to prevent flickering during agent edits).
-
----
-
-## Git History
-
-| Commit | Description |
-|---|---|
-| `8f7c1ba` | Completed Modern template CSS and functionality |
-| `d361658` | Minimal resume template completed |
-| `7c3ff4d` | First stable Resume Builder — major CSS and functionality |
-| `eb44ed6` | ATS Checker page — fixed major issues |
-| `9f17028` | Firebase Auth, Analytics, env setup |
-| `1f7f9e3` | Initial working state |
-| `4d2ae8c` | Initial commit |
 
 ---
 

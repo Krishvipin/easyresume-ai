@@ -7,13 +7,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { Navbar } from "./shared/components/navbar";
 import { Footer } from "./shared/components/footer";
 import LandingPage from "./pages/LandingPage";
-import DashboardPage from "./pages/DashboardPage";
+
 import PlaceholderPage from "./pages/PlaceholderPage";
 import ResumePage from "./pages/ResumePage";
 import ATSCheckerPage from "./pages/ATSCheckerPage";
 import ModifyResumePage from "./pages/ModifyResumePage";
 import CoverLetterPage from "./pages/CoverLetterPage";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+
 
 export default function App() {
   return (
@@ -23,15 +23,7 @@ export default function App() {
         
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route 
-            path="/resume-builder" 
-            element={
-              <ProtectedRoute>
-                <ResumePage />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/resume-builder" element={<ResumePage />} />
           <Route path="/ats-checker" element={<ATSCheckerPage />} />
           <Route path="/modify-resume" element={<ModifyResumePage />} />
           <Route path="/cover-letter" element={<CoverLetterPage />} />
