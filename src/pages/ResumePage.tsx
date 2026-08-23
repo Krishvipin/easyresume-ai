@@ -19,6 +19,8 @@ import {
   Info,
   ChevronUp,
   ChevronDown,
+  Wrench,
+  Award,
 } from "lucide-react";
 
 interface FormData {
@@ -60,6 +62,17 @@ interface FormData {
 
   // Skills
   skills: string[];
+
+  // Tools
+  tools: string[];
+
+  // Certifications
+  certifications: Array<{
+    id: string;
+    name: string;
+    issuer: string;
+    date: string;
+  }>;
 }
 
 const initialFormData: FormData = {
@@ -110,6 +123,15 @@ const initialFormData: FormData = {
     },
   ],
   skills: ["Figma", "Agile/ Scrum", "User Research"],
+  tools: ["Photoshop", "Illustrator", "Framer"],
+  certifications: [
+    {
+      id: "1",
+      name: "Google UX Design Professional Certificate",
+      issuer: "Coursera",
+      date: "2022",
+    },
+  ],
 };
 
 export default function ResumePage() {
@@ -126,6 +148,8 @@ export default function ResumePage() {
               : [exp.description].filter(Boolean),
           }));
         }
+        if (!parsed.tools) parsed.tools = initialFormData.tools;
+        if (!parsed.certifications) parsed.certifications = initialFormData.certifications;
         return parsed;
       } catch (e) {
         return initialFormData;
@@ -322,6 +346,77 @@ export default function ResumePage() {
       ...prev,
       skills: prev.skills.filter((_, i) => i !== index),
     }));
+  };
+
+  const addTool = () => {
+    setFormData((prev) => ({
+      ...prev,
+      tools: [...prev.tools, ""],
+    }));
+  };
+
+  const updateTool = (index: number, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tools: prev.tools.map((tool, i) => (i === index ? value : tool)),
+    }));
+  };
+
+  const removeTool = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      tools: prev.tools.filter((_, i) => i !== index),
+    }));
+  };
+
+  const moveTool = (index: number, direction: "up" | "down") => {
+    setFormData((prev) => {
+      const items = [...prev.tools];
+      if (direction === "up" && index > 0) {
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+      } else if (direction === "down" && index < items.length - 1) {
+        [items[index], items[index + 1]] = [items[index + 1], items[index]];
+      }
+      return { ...prev, tools: items };
+    });
+  };
+
+  const addCertification = () => {
+    setFormData((prev) => ({
+      ...prev,
+      certifications: [
+        ...prev.certifications,
+        { id: Date.now().toString(), name: "", issuer: "", date: "" },
+      ],
+    }));
+  };
+
+  const updateCertification = (id: string, field: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      certifications: prev.certifications.map((cert) =>
+        cert.id === id ? { ...cert, [field]: value } : cert,
+      ),
+    }));
+  };
+
+  const removeCertification = (id: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      certifications: prev.certifications.filter((cert) => cert.id !== id),
+    }));
+  };
+
+  const moveCertification = (index: number, direction: "up" | "down") => {
+    setFormData((prev) => {
+      const items = [...prev.certifications];
+      if (direction === "up" && index > 0) {
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+      } else if (direction === "down" && index < items.length - 1) {
+        [items[index], items[index + 1]] = [items[index + 1], items[index]];
+      }
+      return { ...prev, certifications: items };
+    });
   };
 
   const moveExperience = (index: number, direction: "up" | "down") => {
@@ -701,6 +796,79 @@ export default function ResumePage() {
                 ))}
                 <button
                   onClick={addSkill}
+                  className="w-full py-3 bg-[#27AE60] text-white rounded-xl font-medium text-[14px] flex items-center justify-center gap-2 hover:bg-[#1E8E4D] transition-all"
+                >
+                  <Plus size={16} />
+                  Add
+                </button>
+              </div>
+            </FormSection>
+
+            {/* Tools */}
+            <FormSection title="Tools" icon={<Wrench size={20} />}>
+              <div className="space-y-3">
+                {formData.tools.map((tool, index) => (
+                  <div key={index} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={tool}
+                      onChange={(e) => updateTool(index, e.target.value)}
+                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      placeholder={`Tool ${index + 1}`}
+                    />
+                    <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+                      <button
+                        onClick={() => moveTool(index, "up")}
+                        disabled={index === 0}
+                        className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ChevronUp size={16} />
+                      </button>
+                      <button
+                        onClick={() => moveTool(index, "down")}
+                        disabled={index === formData.tools.length - 1}
+                        className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-r border-gray-200"
+                      >
+                        <ChevronDown size={16} />
+                      </button>
+                      <button
+                        onClick={() => removeTool(index)}
+                        className="px-3 py-2 text-red-400 hover:bg-red-50 hover:text-red-500 rounded-r-lg transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={addTool}
+                  className="w-full py-3 bg-[#27AE60] text-white rounded-xl font-medium text-[14px] flex items-center justify-center gap-2 hover:bg-[#1E8E4D] transition-all"
+                >
+                  <Plus size={16} />
+                  Add
+                </button>
+              </div>
+            </FormSection>
+
+            {/* Certifications */}
+            <FormSection title="Certifications" icon={<Award size={20} />}>
+              <div className="space-y-4">
+                {formData.certifications.map((cert, index) => (
+                  <CertificationForm
+                    key={cert.id}
+                    certification={cert}
+                    onUpdate={(field, value) =>
+                      updateCertification(cert.id, field, value)
+                    }
+                    onRemove={() => removeCertification(cert.id)}
+                    onMoveUp={() => moveCertification(index, "up")}
+                    onMoveDown={() => moveCertification(index, "down")}
+                    isFirst={index === 0}
+                    isLast={index === formData.certifications.length - 1}
+                  />
+                ))}
+                <button
+                  onClick={addCertification}
                   className="w-full py-3 bg-[#27AE60] text-white rounded-xl font-medium text-[14px] flex items-center justify-center gap-2 hover:bg-[#1E8E4D] transition-all"
                 >
                   <Plus size={16} />
@@ -1104,6 +1272,72 @@ function EducationForm({
   );
 }
 
+function CertificationForm({
+  certification,
+  onUpdate,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
+}: {
+  certification: any;
+  onUpdate: (field: string, value: string) => void;
+  onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
+}) {
+  return (
+    <div className="border border-gray-200 rounded-xl p-5 space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <h4 className="text-[16px] font-medium text-gray-900">Certification</h4>
+        <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+          <button
+            onClick={onMoveUp}
+            disabled={isFirst}
+            className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronUp size={16} />
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={isLast}
+            className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-r border-gray-200"
+          >
+            <ChevronDown size={16} />
+          </button>
+          <button
+            onClick={onRemove}
+            className="px-3 py-2 text-red-400 hover:bg-red-50 hover:text-red-500 rounded-r-lg transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <FormInput
+          label="Certification Name"
+          value={certification.name}
+          onChange={(e) => onUpdate("name", e.target.value)}
+        />
+        <FormInput
+          label="Issuing Organization"
+          value={certification.issuer}
+          onChange={(e) => onUpdate("issuer", e.target.value)}
+        />
+        <FormInput
+          label="Date/Year"
+          value={certification.date}
+          onChange={(e) => onUpdate("date", e.target.value)}
+        />
+      </div>
+    </div>
+  );
+}
+
 function MinimalTemplate({ data }: { data: FormData }) {
   const links = data.linksPortfolio.filter((l) => l.url).map((l) => l.url);
   return (
@@ -1239,6 +1473,33 @@ function MinimalTemplate({ data }: { data: FormData }) {
         </div>
       )}
 
+      {data.certifications.length > 0 && (
+        <div className="mb-6">
+          <div
+            className="text-base font-bold mb-2 pb-1 border-b"
+            style={{
+              borderColor: data.secondaryColor,
+              color: data.primaryColor,
+            }}
+          >
+            Certifications
+          </div>
+          <div className="space-y-3">
+            {data.certifications.map((cert) => (
+              <div key={cert.id} className="mb-3">
+                <div className="flex justify-between mb-1">
+                  <div className="font-bold text-[13px] text-gray-900">
+                    {cert.name}
+                  </div>
+                  <div className="text-xs text-gray-600">{cert.date}</div>
+                </div>
+                <div className="text-[13px] text-gray-600">{cert.issuer}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {data.skills.length > 0 && (
         <div className="mb-6">
           <div
@@ -1252,6 +1513,23 @@ function MinimalTemplate({ data }: { data: FormData }) {
           </div>
           <div className="text-[13px] text-gray-700">
             {data.skills.join(" • ")}
+          </div>
+        </div>
+      )}
+
+      {data.tools.length > 0 && (
+        <div className="mb-6">
+          <div
+            className="text-base font-bold mb-2 pb-1 border-b"
+            style={{
+              borderColor: data.secondaryColor,
+              color: data.primaryColor,
+            }}
+          >
+            Tools
+          </div>
+          <div className="text-[13px] text-gray-700">
+            {data.tools.join(" • ")}
           </div>
         </div>
       )}
@@ -1404,6 +1682,37 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
         </div>
       )}
 
+      {data.certifications.length > 0 && (
+        <div className="mb-4">
+          <div
+            className="text-[13px] font-bold uppercase tracking-wider mb-2"
+            style={{ color: data.secondaryColor }}
+          >
+            Certifications
+          </div>
+          <div className="space-y-4">
+            {data.certifications.map((cert) => (
+              <div key={cert.id}>
+                <div className="flex justify-between mb-1">
+                  <div className="font-bold text-[13px] text-gray-900">
+                    {cert.name}
+                  </div>
+                  <div className="text-xs text-gray-600 whitespace-nowrap">
+                    {cert.date}
+                  </div>
+                </div>
+                <div
+                  className="text-[13px] font-medium"
+                  style={{ color: data.primaryColor }}
+                >
+                  {cert.issuer}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {data.skills.length > 0 && (
         <div className="mb-4">
           <div
@@ -1425,6 +1734,28 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
           </div>
         </div>
       )}
+
+      {data.tools.length > 0 && (
+        <div className="mb-4">
+          <div
+            className="text-[13px] font-bold uppercase tracking-wider mb-2"
+            style={{ color: data.secondaryColor }}
+          >
+            Tools
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {data.tools.map((tool, index) => (
+              <span
+                key={index}
+                className="px-2 py-1 rounded text-xs text-white"
+                style={{ backgroundColor: data.secondaryColor }}
+              >
+                {tool}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1432,14 +1763,19 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
 function ModernTemplate({ data }: { data: FormData }) {
   return (
     <div
-      className="flex bg-white w-full max-w-[210mm] mx-auto border border-gray-200 print:border-none"
+      className="flex bg-white w-full max-w-[210mm] print:max-w-none print:w-full print:mx-0 mx-auto border border-gray-200 print:border-none relative"
       style={{
-        background: `linear-gradient(to right, ${data.primaryColor} 33.333333%, white 33.333333%)`,
         minHeight: "297mm",
       }}
     >
+      {/* Print Background Fix for Multi-page: Covers entire height of every printed page */}
+      <div
+        className="hidden print:block fixed inset-y-0 left-0 w-1/3 -z-10"
+        style={{ backgroundColor: data.primaryColor }}
+      />
+      
       {/* Sidebar */}
-      <div className="w-1/3 p-5 text-white print:pb-0">
+      <div className="w-1/3 p-5 text-white print:pb-0 relative z-10 modern-sidebar-print" style={{ backgroundColor: data.primaryColor }}>
         {data.photo && (
           <img
             src={data.photo}
@@ -1516,10 +1852,28 @@ function ModernTemplate({ data }: { data: FormData }) {
             </ul>
           </div>
         )}
+
+        {data.tools.length > 0 && (
+          <div className="mb-5 pb-5 border-b border-white/20 last:border-0 last:mb-0 last:pb-0">
+            <div className="text-[12px] font-bold uppercase tracking-wider text-white mb-3">
+              Tools
+            </div>
+            <ul className="list-disc list-outside ml-4 space-y-1.5">
+              {data.tools.map((tool, index) => (
+                <li
+                  key={index}
+                  className="text-[11px] text-white/90 break-words"
+                >
+                  {tool}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
-      <div className="w-2/3 p-6 pt-5 print:pb-0">
+      <div className="w-2/3 p-6 pt-5 print:pb-0 relative z-10">
         {data.summary && (
           <div className="mb-5 pb-5 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
             <div
@@ -1594,6 +1948,35 @@ function ModernTemplate({ data }: { data: FormData }) {
                     <div className="text-[11px] text-gray-500">{edu.duration}</div>
                   </div>
                   <div className="text-[13px] text-gray-700">{edu.details}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {data.certifications.length > 0 && (
+          <div className="mb-5 pb-5 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
+            <div
+              className="text-[12px] font-bold uppercase tracking-wider mb-3"
+              style={{ color: data.primaryColor }}
+            >
+              Certifications
+            </div>
+            <div className="space-y-4">
+              {data.certifications.map((cert) => (
+                <div key={cert.id}>
+                  <div className="font-bold text-[13px] text-gray-900 mb-0.5">
+                    {cert.name}
+                  </div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <div
+                      className="text-[13px] font-medium"
+                      style={{ color: data.secondaryColor }}
+                    >
+                      {cert.issuer}
+                    </div>
+                    <div className="text-[11px] text-gray-500">{cert.date}</div>
+                  </div>
                 </div>
               ))}
             </div>

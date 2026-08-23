@@ -51,23 +51,23 @@ export default function LandingPage() {
         {/* Left Rotated Resume */}
         <motion.div 
           initial={{ opacity: 0, rotate: 0, x: -100 }}
-          whileInView={{ opacity: 1, rotate: 15, x: -280 }}
+          whileInView={{ opacity: 1, rotate: -15, x: -280 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="absolute hidden lg:block w-[450px] aspect-[1/1.4] bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden z-10"
+          className="absolute hidden lg:block w-[450px] aspect-[1/1.4] z-10"
         >
-          <ResumeSkeleton color="bg-blue-50" />
+          <img src="/assets/Reference%20resume/Rectangle%20412.png" alt="Resume Preview 1" className="w-full h-full object-contain rotate-[15deg]" />
         </motion.div>
 
         {/* Right Rotated Resume */}
         <motion.div 
           initial={{ opacity: 0, rotate: 0, x: 100 }}
-          whileInView={{ opacity: 1, rotate: -15, x: 280 }}
+          whileInView={{ opacity: 1, rotate: 15, x: 280 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="absolute hidden lg:block w-[450px] aspect-[1/1.4] bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden z-10"
+          className="absolute hidden lg:block w-[450px] aspect-[1/1.4] z-10"
         >
-          <ResumeSkeleton color="bg-purple-50" />
+          <img src="/assets/Reference%20resume/Rectangle%20413.png" alt="Resume Preview 3" className="w-full h-full object-contain -rotate-[15deg]" />
         </motion.div>
 
         {/* Center Resume */}
@@ -76,9 +76,9 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-          className="relative w-full max-w-[500px] aspect-[1/1.4] bg-white rounded-2xl border border-gray-100 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.12)] overflow-hidden z-20"
+          className="relative w-full max-w-[500px] aspect-[1/1.4] z-20"
         >
-          <ResumeSkeleton color="bg-[#fcfcfc]" />
+          <img src="/assets/Reference%20resume/Rectangle%20411.png" alt="Resume Preview 2" className="w-full h-full object-contain" />
         </motion.div>
       </div>
     </div>
