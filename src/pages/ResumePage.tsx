@@ -16,6 +16,9 @@ import {
   Phone,
   MapPin,
   RotateCcw,
+  Info,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 
 interface FormData {
@@ -321,6 +324,42 @@ export default function ResumePage() {
     }));
   };
 
+  const moveExperience = (index: number, direction: "up" | "down") => {
+    setFormData((prev) => {
+      const items = [...prev.experiences];
+      if (direction === "up" && index > 0) {
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+      } else if (direction === "down" && index < items.length - 1) {
+        [items[index], items[index + 1]] = [items[index + 1], items[index]];
+      }
+      return { ...prev, experiences: items };
+    });
+  };
+
+  const moveEducation = (index: number, direction: "up" | "down") => {
+    setFormData((prev) => {
+      const items = [...prev.education];
+      if (direction === "up" && index > 0) {
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+      } else if (direction === "down" && index < items.length - 1) {
+        [items[index], items[index + 1]] = [items[index + 1], items[index]];
+      }
+      return { ...prev, education: items };
+    });
+  };
+
+  const moveSkill = (index: number, direction: "up" | "down") => {
+    setFormData((prev) => {
+      const items = [...prev.skills];
+      if (direction === "up" && index > 0) {
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+      } else if (direction === "down" && index < items.length - 1) {
+        [items[index], items[index + 1]] = [items[index + 1], items[index]];
+      }
+      return { ...prev, skills: items };
+    });
+  };
+
   return (
     <div className="flex-1 flex flex-col pt-20 pb-20 print:pt-0 print:pb-0 print:bg-white">
       <style>{`
@@ -573,7 +612,7 @@ export default function ResumePage() {
             {/* Work Experience */}
             <FormSection title="Work Experience" icon={<Briefcase size={20} />}>
               <div className="space-y-4">
-                {formData.experiences.map((exp) => (
+                {formData.experiences.map((exp, index) => (
                   <ExperienceForm
                     key={exp.id}
                     experience={exp}
@@ -581,6 +620,10 @@ export default function ResumePage() {
                       updateExperience(exp.id, field, value)
                     }
                     onRemove={() => removeExperience(exp.id)}
+                    onMoveUp={() => moveExperience(index, "up")}
+                    onMoveDown={() => moveExperience(index, "down")}
+                    isFirst={index === 0}
+                    isLast={index === formData.experiences.length - 1}
                   />
                 ))}
                 <button
@@ -596,7 +639,7 @@ export default function ResumePage() {
             {/* Education */}
             <FormSection title="Education" icon={<GraduationCap size={20} />}>
               <div className="space-y-4">
-                {formData.education.map((edu) => (
+                {formData.education.map((edu, index) => (
                   <EducationForm
                     key={edu.id}
                     education={edu}
@@ -604,6 +647,10 @@ export default function ResumePage() {
                       updateEducation(edu.id, field, value)
                     }
                     onRemove={() => removeEducation(edu.id)}
+                    onMoveUp={() => moveEducation(index, "up")}
+                    onMoveDown={() => moveEducation(index, "down")}
+                    isFirst={index === 0}
+                    isLast={index === formData.education.length - 1}
                   />
                 ))}
                 <button
@@ -628,12 +675,28 @@ export default function ResumePage() {
                       className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                       placeholder={`Skill ${index + 1}`}
                     />
-                    <button
-                      onClick={() => removeSkill(index)}
-                      className="px-3 py-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+                      <button
+                        onClick={() => moveSkill(index, "up")}
+                        disabled={index === 0}
+                        className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        <ChevronUp size={16} />
+                      </button>
+                      <button
+                        onClick={() => moveSkill(index, "down")}
+                        disabled={index === formData.skills.length - 1}
+                        className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-r border-gray-200"
+                      >
+                        <ChevronDown size={16} />
+                      </button>
+                      <button
+                        onClick={() => removeSkill(index)}
+                        className="px-3 py-2 text-red-400 hover:bg-red-50 hover:text-red-500 rounded-r-lg transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 <button
@@ -657,13 +720,24 @@ export default function ResumePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col gap-0 print:block print:w-full"
+            className="flex flex-col gap-0 print:block print:w-full lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:overflow-y-scroll self-start"
           >
+            {/* Privacy Banner */}
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[13px] flex items-start gap-2 print:hidden">
+              <Info size={16} className="mt-0.5 flex-shrink-0" />
+              <p>
+                <strong>Privacy Note:</strong> We do not store your data. All
+                data is stored locally in your browser. Please remember to{" "}
+                <strong>Export JSON</strong> so you can import it anytime to
+                continue working.
+              </p>
+            </div>
+
             {/* Preview Header */}
             <div className="flex items-center justify-between border-b border-[#DADAE3] pb-4 mb-4 flex-wrap gap-2 print:hidden">
               <div className="flex items-center gap-4">
                 <div className="text-[24px] font-bold transition-all text-black">
-                  Live Preview
+                  Default Resume
                 </div>
               </div>
 
@@ -695,7 +769,7 @@ export default function ResumePage() {
                   className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
                 >
                   <Download size={14} />
-                  Download JSON
+                  Export JSON
                 </button>
                 <button
                   onClick={handleExportPDF}
@@ -707,9 +781,9 @@ export default function ResumePage() {
               </div>
             </div>
 
-            {/* Screen Content Area */}
+            {/* Content Area for Screen and Print */}
             <div
-              className="bg-white overflow-auto print:hidden"
+              className="bg-white overflow-auto print:overflow-visible"
               id="resumePreview"
             >
               {formData.fullName || formData.role || formData.summary ? (
@@ -740,43 +814,6 @@ export default function ResumePage() {
                 </div>
               )}
             </div>
-
-            {/* Print Content Area (Table hack for repeating margins) */}
-            <table className="hidden print:table w-full bg-white">
-              <thead className="print:table-header-group">
-                <tr>
-                  <td>
-                    <div className="h-12 text-transparent">&nbsp;</div>
-                  </td>
-                </tr>
-              </thead>
-              <tbody className="print:table-row-group">
-                <tr>
-                  <td>
-                    {formData.fullName || formData.role || formData.summary ? (
-                      <div>
-                        {formData.template === "minimal" && (
-                          <MinimalTemplate data={formData} />
-                        )}
-                        {formData.template === "professional" && (
-                          <ProfessionalTemplate data={formData} />
-                        )}
-                        {formData.template === "modern" && (
-                          <ModernTemplate data={formData} />
-                        )}
-                      </div>
-                    ) : null}
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot className="print:table-footer-group">
-                <tr>
-                  <td>
-                    <div className="h-12 text-transparent">&nbsp;</div>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
           </motion.div>
         </div>
       </div>
@@ -868,21 +905,45 @@ function ExperienceForm({
   experience,
   onUpdate,
   onRemove,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }: {
   experience: any;
   onUpdate: (field: string, value: any) => void;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   return (
     <div className="border border-gray-200 rounded-xl p-5 space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h4 className="text-[16px] font-medium text-gray-900">Experience</h4>
-        <button
-          onClick={onRemove}
-          className="text-gray-400 hover:bg-gray-100 p-2 rounded-lg transition-colors"
-        >
-          <Trash2 size={16} />
-        </button>
+        <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+          <button
+            onClick={onMoveUp}
+            disabled={isFirst}
+            className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronUp size={16} />
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={isLast}
+            className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-r border-gray-200"
+          >
+            <ChevronDown size={16} />
+          </button>
+          <button
+            onClick={onRemove}
+            className="px-3 py-2 text-red-400 hover:bg-red-50 hover:text-red-500 rounded-r-lg transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -919,17 +980,41 @@ function ExperienceForm({
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="Write a bullet point..."
                 />
-                <button
-                  onClick={() => {
-                    const newDesc = experience.description.filter(
-                      (_: any, i: number) => i !== index,
-                    );
-                    onUpdate("description", newDesc);
-                  }}
-                  className="px-3 py-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+                  <button
+                    onClick={() => {
+                      const newDesc = [...experience.description];
+                      [newDesc[index - 1], newDesc[index]] = [newDesc[index], newDesc[index - 1]];
+                      onUpdate("description", newDesc);
+                    }}
+                    disabled={index === 0}
+                    className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newDesc = [...experience.description];
+                      [newDesc[index], newDesc[index + 1]] = [newDesc[index + 1], newDesc[index]];
+                      onUpdate("description", newDesc);
+                    }}
+                    disabled={index === experience.description.length - 1}
+                    className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-r border-gray-200"
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newDesc = experience.description.filter(
+                        (_: any, i: number) => i !== index,
+                      );
+                      onUpdate("description", newDesc);
+                    }}
+                    className="px-3 py-2 text-red-400 hover:bg-red-50 hover:text-red-500 rounded-r-lg transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
             <button
@@ -952,21 +1037,45 @@ function EducationForm({
   education,
   onUpdate,
   onRemove,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast,
 }: {
   education: any;
   onUpdate: (field: string, value: string) => void;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   return (
     <div className="border border-gray-200 rounded-xl p-5 space-y-4">
       <div className="flex justify-between items-center mb-4">
         <h4 className="text-[16px] font-medium text-gray-900">Education</h4>
-        <button
-          onClick={onRemove}
-          className="text-gray-400 hover:bg-gray-100 p-2 rounded-lg transition-colors"
-        >
-          <Trash2 size={16} />
-        </button>
+        <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+          <button
+            onClick={onMoveUp}
+            disabled={isFirst}
+            className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronUp size={16} />
+          </button>
+          <button
+            onClick={onMoveDown}
+            disabled={isLast}
+            className="px-2 py-2 text-gray-400 hover:bg-gray-200 transition-colors disabled:opacity-30 disabled:cursor-not-allowed border-r border-gray-200"
+          >
+            <ChevronDown size={16} />
+          </button>
+          <button
+            onClick={onRemove}
+            className="px-3 py-2 text-red-400 hover:bg-red-50 hover:text-red-500 rounded-r-lg transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -998,7 +1107,10 @@ function EducationForm({
 function MinimalTemplate({ data }: { data: FormData }) {
   const links = data.linksPortfolio.filter((l) => l.url).map((l) => l.url);
   return (
-    <div className="p-8 space-y-6 bg-white max-w-4xl mx-auto border border-gray-200 print:border-none">
+    <div
+      className="p-8 space-y-6 bg-white w-full max-w-[210mm] mx-auto border border-gray-200 print:border-none"
+      style={{ minHeight: "297mm" }}
+    >
       <div className="flex items-start gap-6 mb-6">
         {data.photo && (
           <img
@@ -1150,7 +1262,10 @@ function MinimalTemplate({ data }: { data: FormData }) {
 function ProfessionalTemplate({ data }: { data: FormData }) {
   const links = data.linksPortfolio.filter((l) => l.url).map((l) => l.url);
   return (
-    <div className="p-8 bg-white max-w-4xl mx-auto border border-gray-200 print:border-none">
+    <div
+      className="p-8 bg-white w-[210mm] max-w-full mx-auto border border-gray-200 print:border-none"
+      style={{ minHeight: "297mm" }}
+    >
       <div
         className="flex items-start gap-6 mb-6 pb-4 border-b-2"
         style={{ borderColor: data.secondaryColor }}
@@ -1316,10 +1431,11 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
 
 function ModernTemplate({ data }: { data: FormData }) {
   return (
-    <div 
-      className="flex bg-white max-w-4xl mx-auto border border-gray-200 print:border-none"
+    <div
+      className="flex bg-white w-full max-w-[210mm] mx-auto border border-gray-200 print:border-none"
       style={{
-        background: `linear-gradient(to right, ${data.primaryColor} 33.333333%, white 33.333333%)`
+        background: `linear-gradient(to right, ${data.primaryColor} 33.333333%, white 33.333333%)`,
+        minHeight: "297mm",
       }}
     >
       {/* Sidebar */}
@@ -1328,37 +1444,37 @@ function ModernTemplate({ data }: { data: FormData }) {
           <img
             src={data.photo}
             alt="Profile"
-            className="w-[80px] h-[80px] rounded-full object-cover mb-4 border-2 border-white/30 mx-auto"
+            className="w-[80px] h-[80px] rounded-full object-cover mb-5 border-2 border-white/30 mx-auto"
           />
         )}
-        <h1 className="text-lg font-bold mb-4 break-words text-white text-center leading-tight">
+        <h1 className="text-[24px] font-bold mb-6 break-words text-white text-center leading-tight">
           {data.fullName || "Your Name"}
         </h1>
 
-        <div className="mb-4">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-white mb-2">
+        <div className="mb-5 pb-5 border-b border-white/20 last:border-0 last:mb-0 last:pb-0">
+          <div className="text-[12px] font-bold uppercase tracking-wider text-white mb-3">
             Contact
           </div>
           {data.email && (
-            <div className="flex items-center gap-2 text-[13px] text-white/90 mb-2">
+            <div className="flex items-center gap-2 text-[11px] text-white/90 mb-2.5">
               <Mail size={10} className="shrink-0" /> {data.email}
             </div>
           )}
           {data.phone && (
-            <div className="flex items-center gap-2 text-[13px] text-white/90 mb-2">
+            <div className="flex items-center gap-2 text-[11px] text-white/90 mb-2.5">
               <Phone size={10} className="shrink-0" /> {data.phone}
             </div>
           )}
           {data.location && (
-            <div className="flex items-center gap-2 text-[13px] text-white/90 mb-2">
+            <div className="flex items-center gap-2 text-[11px] text-white/90 mb-2.5">
               <MapPin size={10} className="shrink-0" /> {data.location}
             </div>
           )}
         </div>
 
         {data.linksPortfolio.filter((l) => l.url).length > 0 && (
-          <div className="mb-4 last:mb-0">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-white mb-2">
+          <div className="mb-5 pb-5 border-b border-white/20 last:border-0 last:mb-0 last:pb-0">
+            <div className="text-[12px] font-bold uppercase tracking-wider text-white mb-3">
               Links
             </div>
             {data.linksPortfolio
@@ -1368,20 +1484,15 @@ function ModernTemplate({ data }: { data: FormData }) {
                   .replace(/^https?:\/\/(www\.)?/, "")
                   .replace(/\/$/, "");
                 return (
-                  <div key={idx} className="flex items-start gap-2 mb-2.5">
-                    {/* <Link2 size={11} className="shrink-0 mt-[3px] text-white/70" /> */}
-                    <div className="flex flex-col min-w-0 leading-tight">
-                      {link.label && (
-                        <span className="text-[12px] font-semibold text-white">
-                          {link.label}
-                        </span>
-                      )}
-                      <span
-                        className={`break-all ${link.label ? "text-[10px] text-white/70 mt-0.5" : "text-[11px] text-white/90"}`}
-                      >
-                        {cleanUrl}
+                  <div key={idx} className="flex flex-col min-w-0 leading-tight mb-2.5 last:mb-0">
+                    {link.label && (
+                      <span className="text-[11px] font-semibold text-white">
+                        {link.label}
                       </span>
-                    </div>
+                    )}
+                    <span className="break-all text-[11px] text-white/90 mt-0.5">
+                      {cleanUrl}
+                    </span>
                   </div>
                 );
               })}
@@ -1389,15 +1500,15 @@ function ModernTemplate({ data }: { data: FormData }) {
         )}
 
         {data.skills.length > 0 && (
-          <div className="mb-4 last:mb-0">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-white mb-2">
+          <div className="mb-5 pb-5 border-b border-white/20 last:border-0 last:mb-0 last:pb-0">
+            <div className="text-[12px] font-bold uppercase tracking-wider text-white mb-3">
               Skills
             </div>
-            <ul className="list-disc list-outside ml-4 space-y-1">
+            <ul className="list-disc list-outside ml-4 space-y-1.5">
               {data.skills.map((skill, index) => (
                 <li
                   key={index}
-                  className="text-[10px] text-white/90 break-words"
+                  className="text-[11px] text-white/90 break-words"
                 >
                   {skill}
                 </li>
@@ -1410,9 +1521,9 @@ function ModernTemplate({ data }: { data: FormData }) {
       {/* Main Content */}
       <div className="w-2/3 p-6 pt-5 print:pb-0">
         {data.summary && (
-          <div className="mb-4 last:mb-0">
+          <div className="mb-5 pb-5 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
             <div
-              className="text-[12px] font-bold uppercase tracking-wider mb-2"
+              className="text-[12px] font-bold uppercase tracking-wider mb-3"
               style={{ color: data.primaryColor }}
             >
               Profile
@@ -1424,27 +1535,27 @@ function ModernTemplate({ data }: { data: FormData }) {
         )}
 
         {data.experiences.length > 0 && (
-          <div className="mb-4 last:mb-0">
+          <div className="mb-5 pb-5 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
             <div
-              className="text-[12px] font-bold uppercase tracking-wider mb-2"
+              className="text-[12px] font-bold uppercase tracking-wider mb-3"
               style={{ color: data.primaryColor }}
             >
               Experience
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {data.experiences.map((exp) => (
                 <div key={exp.id}>
-                  <div className="font-bold text-[13px] text-gray-900 mb-1">
+                  <div className="font-bold text-[13px] text-gray-900 mb-0.5">
                     {exp.position}
                   </div>
-                  <div className="flex justify-between mb-1">
+                  <div className="flex justify-between items-center mb-1.5">
                     <div
-                      className="text-[13px]"
+                      className="text-[13px] font-medium"
                       style={{ color: data.secondaryColor }}
                     >
                       {exp.company}
                     </div>
-                    <div className="text-xs text-gray-600">{exp.duration}</div>
+                    <div className="text-[11px] text-gray-500">{exp.duration}</div>
                   </div>
                   <ul className="list-disc list-outside ml-4 text-[13px] text-gray-700 leading-relaxed space-y-1">
                     {exp.description
@@ -1460,27 +1571,27 @@ function ModernTemplate({ data }: { data: FormData }) {
         )}
 
         {data.education.length > 0 && (
-          <div className="mb-4 last:mb-0">
+          <div className="mb-5 pb-5 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
             <div
-              className="text-[12px] font-bold uppercase tracking-wider mb-2"
+              className="text-[12px] font-bold uppercase tracking-wider mb-3"
               style={{ color: data.primaryColor }}
             >
               Education
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {data.education.map((edu) => (
                 <div key={edu.id}>
-                  <div className="font-bold text-[13px] text-gray-900 mb-1">
+                  <div className="font-bold text-[13px] text-gray-900 mb-0.5">
                     {edu.degree}
                   </div>
-                  <div className="flex justify-between mb-1">
+                  <div className="flex justify-between items-center mb-1.5">
                     <div
-                      className="text-[13px]"
+                      className="text-[13px] font-medium"
                       style={{ color: data.secondaryColor }}
                     >
                       {edu.school}
                     </div>
-                    <div className="text-xs text-gray-600">{edu.duration}</div>
+                    <div className="text-[11px] text-gray-500">{edu.duration}</div>
                   </div>
                   <div className="text-[13px] text-gray-700">{edu.details}</div>
                 </div>
