@@ -1,6 +1,20 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Upload, FileText, RefreshCw, Plus, Trash2 } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  RefreshCw,
+  Plus,
+  Trash2,
+  User,
+  Briefcase,
+  Sparkles,
+  Copy,
+  CheckCircle2,
+} from "lucide-react";
+import { generateCoverLetterPrompt } from "../lib/cover-letter-prompt";
+import { generateCoverLetter } from "../lib/gemini";
+import { generateCoverLetterFromOpenRouter } from "../lib/openrouter";
 
 interface UserInfo {
   fullName: string;
@@ -32,10 +46,19 @@ export default function CoverLetterPage() {
       phone: "",
       location: "",
     },
-    jobDetails: [],
+    jobDetails: [
+      {
+        id: "1",
+        role: "",
+        company: "",
+        hiringManager: "",
+      },
+    ],
     jobDescription: "",
     isGenerating: false,
   });
+
+  const [isCopied, setIsCopied] = useState(false);
 
   // User Info handlers
   const handleUserInfoChange = (field: keyof UserInfo, value: string) => {
@@ -62,12 +85,12 @@ export default function CoverLetterPage() {
   const handleJobDetailChange = (
     id: string,
     field: keyof Omit<JobDetail, "id">,
-    value: string
+    value: string,
   ) => {
     setState({
       ...state,
       jobDetails: state.jobDetails.map((detail) =>
-        detail.id === id ? { ...detail, [field]: value } : detail
+        detail.id === id ? { ...detail, [field]: value } : detail,
       ),
     });
   };
@@ -80,7 +103,7 @@ export default function CoverLetterPage() {
   };
 
   const handleJobDescriptionChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
     setState({ ...state, jobDescription: e.target.value });
   };
@@ -98,40 +121,80 @@ export default function CoverLetterPage() {
 
     setState({ ...state, isGenerating: true });
 
-    // TODO: Integrate with AI API to generate cover letter
-    setTimeout(() => {
+    try {
       const jobDetail = state.jobDetails[0];
+      const resumeDataStr =
+        localStorage.getItem("easyresume_data") || "No resume data provided.";
+
+      const prompt = generateCoverLetterPrompt(
+        state.userInfo.fullName,
+        state.userInfo.email,
+        state.userInfo.phone,
+        state.userInfo.location,
+        jobDetail.role,
+        jobDetail.company,
+        jobDetail.hiringManager,
+        state.jobDescription,
+        resumeDataStr,
+      );
+
+      let letterText = "";
+
+      // 1. Try Gemini
+      try {
+        letterText = await generateCoverLetter(prompt);
+      } catch (aiError) {
+        console.warn("Gemini failed, trying OpenRouter...", aiError);
+        // 2. Fallback to OpenRouter
+        const envTimeout = parseInt(
+          import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60",
+          10,
+        );
+        const timeoutSeconds = isNaN(envTimeout) ? 60 : envTimeout;
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(
+          () => abortController.abort(),
+          timeoutSeconds * 1000,
+        );
+
+        try {
+          letterText = await generateCoverLetterFromOpenRouter(
+            prompt,
+            abortController.signal,
+          );
+          clearTimeout(timeoutId);
+        } catch (openRouterError: any) {
+          clearTimeout(timeoutId);
+          if (openRouterError.name === "AbortError") {
+            throw new Error("Analysis timed out. Please try again.");
+          }
+          throw new Error(
+            "Both AI providers failed. Please check your API keys or try again later.",
+          );
+        }
+      }
+
       setState((prev) => ({
         ...prev,
         isGenerating: false,
-        generatedLetter: `Dear ${jobDetail.hiringManager || "Hiring Manager"},
-
-I am writing to express my strong interest in the ${jobDetail.role} position at ${jobDetail.company}. With my experience and passion for the role, I am confident that I would be an excellent fit for your team.
-
-[AI-generated cover letter content based on job description...]
-
-I am excited about the opportunity to contribute to ${jobDetail.company} and would welcome the chance to discuss how my skills and background align with your needs.
-
-Thank you for considering my application. I look forward to hearing from you.
-
-Sincerely,
-${prev.userInfo.fullName}
-${prev.userInfo.email}
-${prev.userInfo.phone}`,
+        generatedLetter: letterText,
       }));
-    }, 3000);
+    } catch (error: any) {
+      console.error("Cover letter generation failed:", error);
+      alert(error.message || "Failed to generate cover letter.");
+      setState((prev) => ({ ...prev, isGenerating: false }));
+    }
   };
 
-  const handleDownload = () => {
+  const handleCopyText = async () => {
     if (!state.generatedLetter) return;
-
-    const element = document.createElement("a");
-    const file = new Blob([state.generatedLetter], { type: "text/plain" });
-    element.href = URL.createObjectURL(file);
-    element.download = "cover-letter.txt";
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
+    try {
+      await navigator.clipboard.writeText(state.generatedLetter);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy text:", err);
+    }
   };
 
   const handleReset = () => {
@@ -142,7 +205,14 @@ ${prev.userInfo.phone}`,
         phone: "",
         location: "",
       },
-      jobDetails: [],
+      jobDetails: [
+        {
+          id: "1",
+          role: "",
+          company: "",
+          hiringManager: "",
+        },
+      ],
       jobDescription: "",
       isGenerating: false,
       generatedLetter: undefined,
@@ -160,7 +230,7 @@ ${prev.userInfo.phone}`,
             transition={{ duration: 0.5 }}
             className="text-[24px] font-bold tracking-tight text-black font-display"
           >
-            Generate Cover Letter
+            Cover Letter
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -168,7 +238,7 @@ ${prev.userInfo.phone}`,
             transition={{ duration: 0.5, delay: 0.1 }}
             className="text-[16px] leading-[26px] text-[#4A4A57] font-normal max-w-[667px]"
           >
-            Create a personalized cover letter in minutes with AI assistance.
+            Tailored to the role and company - sounds human, not generic.
           </motion.p>
         </div>
 
@@ -182,19 +252,19 @@ ${prev.userInfo.phone}`,
             className="flex flex-col gap-5"
           >
             {/* Your Info Section */}
-            <div className="border border-[#DADAE3] rounded-lg p-4 flex flex-col gap-4">
+            <div className="border border-[#E5E7EB] rounded-xl p-6 flex flex-col gap-6 bg-white shadow-sm">
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-white border border-black rounded" />
-                <h3 className="text-[12px] font-medium text-black">
+                <User size={18} className="text-gray-900" />
+                <h3 className="text-[14px] font-bold text-gray-900">
                   Your Info
                 </h3>
               </div>
-              <div className="border-t border-[#DADAE3]" />
+              <div className="border-t border-[#E5E7EB]" />
 
               {/* Full Name & Email */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
-                  <label className="text-[12px] font-medium text-[#7A7A8C]">
+                  <label className="text-[13px] font-medium text-gray-500">
                     Full name
                   </label>
                   <input
@@ -203,12 +273,12 @@ ${prev.userInfo.phone}`,
                     onChange={(e) =>
                       handleUserInfoChange("fullName", e.target.value)
                     }
-                    placeholder="Prashanth"
-                    className="p-2 border border-[#DADAE3] rounded text-[12px] font-medium text-[#7A7A8C] focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white"
+                    placeholder="Sarah"
+                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[12px] font-medium text-[#7A7A8C]">
+                  <label className="text-[13px] font-medium text-gray-500">
                     Email
                   </label>
                   <input
@@ -217,16 +287,16 @@ ${prev.userInfo.phone}`,
                     onChange={(e) =>
                       handleUserInfoChange("email", e.target.value)
                     }
-                    placeholder="prashanth@email.com"
-                    className="p-2 border border-[#DADAE3] rounded text-[12px] font-medium text-[#7A7A8C] focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white"
+                    placeholder="Sarah@email.com"
+                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                   />
                 </div>
               </div>
 
               {/* Phone & Location */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
-                  <label className="text-[12px] font-medium text-[#7A7A8C]">
+                  <label className="text-[13px] font-medium text-gray-500">
                     Phone
                   </label>
                   <input
@@ -235,12 +305,12 @@ ${prev.userInfo.phone}`,
                     onChange={(e) =>
                       handleUserInfoChange("phone", e.target.value)
                     }
-                    placeholder="+91 9962139116"
-                    className="p-2 border border-[#DADAE3] rounded text-[12px] font-medium text-[#7A7A8C] focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white"
+                    placeholder="+1 202-555-0143"
+                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-[12px] font-medium text-[#7A7A8C]">
+                  <label className="text-[13px] font-medium text-gray-500">
                     Location
                   </label>
                   <input
@@ -249,53 +319,47 @@ ${prev.userInfo.phone}`,
                     onChange={(e) =>
                       handleUserInfoChange("location", e.target.value)
                     }
-                    placeholder="Chennai"
-                    className="p-2 border border-[#DADAE3] rounded text-[12px] font-medium text-[#7A7A8C] focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white"
+                    placeholder="United States"
+                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                   />
                 </div>
               </div>
             </div>
 
             {/* Job Details Section */}
-            <div className="border border-[#DADAE3] rounded-lg p-4 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-white border border-black rounded" />
-                  <h3 className="text-[12px] font-medium text-black">
-                    Job Details
-                  </h3>
-                </div>
-                <button
-                  onClick={handleAddJobDetail}
-                  className="flex items-center gap-1 px-2 py-1 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
-                >
-                  <Plus size={12} />
-                  Add
-                </button>
+            <div className="border border-[#E5E7EB] rounded-xl p-6 flex flex-col gap-6 bg-white shadow-sm">
+              <div className="flex items-center gap-2">
+                <Briefcase size={18} className="text-gray-900" />
+                <h3 className="text-[14px] font-bold text-gray-900">
+                  Job Details
+                </h3>
               </div>
-              <div className="border-t border-[#DADAE3]" />
+              <div className="border-t border-[#E5E7EB]" />
 
-              {/* Job Details List */}
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-5">
                 {state.jobDetails.map((detail) => (
-                  <div key={detail.id} className="flex flex-col gap-3 pb-4 border-b border-[#DADAE3] last:border-b-0 last:pb-0">
+                  <React.Fragment key={detail.id}>
                     <div className="flex flex-col gap-2">
-                      <label className="text-[12px] font-medium text-[#7A7A8C]">
+                      <label className="text-[13px] font-medium text-gray-500">
                         Role Applying for
                       </label>
                       <input
                         type="text"
                         value={detail.role}
                         onChange={(e) =>
-                          handleJobDetailChange(detail.id, "role", e.target.value)
+                          handleJobDetailChange(
+                            detail.id,
+                            "role",
+                            e.target.value,
+                          )
                         }
                         placeholder="Designer"
-                        className="p-2 border border-[#DADAE3] rounded text-[12px] font-medium text-[#7A7A8C] focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white"
+                        className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                       />
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <label className="text-[12px] font-medium text-[#7A7A8C]">
+                      <label className="text-[13px] font-medium text-gray-500">
                         Company Name
                       </label>
                       <input
@@ -305,61 +369,47 @@ ${prev.userInfo.phone}`,
                           handleJobDetailChange(
                             detail.id,
                             "company",
-                            e.target.value
+                            e.target.value,
                           )
                         }
                         placeholder="Google"
-                        className="p-2 border border-[#DADAE3] rounded text-[12px] font-medium text-[#7A7A8C] focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white"
+                        className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                       />
                     </div>
 
                     <div className="flex flex-col gap-2">
-                      <label className="text-[12px] font-medium text-[#7A7A8C]">
+                      <label className="text-[13px] font-medium text-gray-500">
                         Hiring Manager Name
                       </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={detail.hiringManager}
-                          onChange={(e) =>
-                            handleJobDetailChange(
-                              detail.id,
-                              "hiringManager",
-                              e.target.value
-                            )
-                          }
-                          placeholder="Mr. John"
-                          className="flex-1 p-2 border border-[#DADAE3] rounded text-[12px] font-medium text-[#7A7A8C] focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white"
-                        />
-                        <button
-                          onClick={() => handleRemoveJobDetail(detail.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded transition-all"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      <input
+                        type="text"
+                        value={detail.hiringManager}
+                        onChange={(e) =>
+                          handleJobDetailChange(
+                            detail.id,
+                            "hiringManager",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="Mr. John"
+                        className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
+                      />
                     </div>
-                  </div>
+                  </React.Fragment>
                 ))}
-
-                {state.jobDetails.length === 0 && (
-                  <p className="text-[12px] text-[#7A7A8C] text-center py-2">
-                    Click "Add" to add job details
-                  </p>
-                )}
               </div>
             </div>
 
             {/* Job Description */}
-            <div className="border border-[#DADAE3] rounded-lg p-4 flex flex-col gap-3">
-              <label className="text-[12px] font-medium text-black">
+            <div className="border border-[#E5E7EB] rounded-xl p-6 flex flex-col gap-4 bg-white shadow-sm">
+              <label className="text-[14px] font-bold text-gray-900">
                 Job description
               </label>
               <textarea
                 value={state.jobDescription}
                 onChange={handleJobDescriptionChange}
                 placeholder="Paste the full job description here..."
-                className="w-full h-[200px] p-3 border border-[#DADAE3] rounded text-[12px] font-medium text-[#7A7A8C] focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent resize-none bg-white"
+                className="w-full h-[250px] p-4 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent resize-none bg-white placeholder-gray-400"
               />
             </div>
 
@@ -372,23 +422,23 @@ ${prev.userInfo.phone}`,
                 state.jobDetails.length === 0 ||
                 !state.jobDescription.trim()
               }
-              className={`w-full text-white py-2 px-3 rounded text-[16px] font-normal flex items-center justify-center gap-2 transition-all ${
+              className={`w-full text-white py-3 px-4 rounded-lg text-[16px] font-medium flex items-center justify-center gap-2 transition-all ${
                 state.userInfo.fullName.trim() &&
                 state.jobDetails.length > 0 &&
                 state.jobDescription.trim()
-                  ? "bg-[#27AE60] hover:bg-[#1E8E4D]"
-                  : "bg-[#7A7A8C] hover:bg-[#6A6A7C]"
+                  ? "bg-[#27AE60] hover:bg-[#1E8E4D] shadow-md shadow-[#27AE60]/20"
+                  : "bg-gray-400 hover:bg-gray-500"
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
               {state.isGenerating ? (
                 <>
-                  <RefreshCw size={16} className="animate-spin" />
+                  <RefreshCw size={20} className="animate-spin" />
                   Generating...
                 </>
               ) : (
                 <>
-                  Generate Resume
-                  <Plus size={16} />
+                  Generate Cover Letter
+                  <Sparkles size={20} />
                 </>
               )}
             </button>
@@ -408,11 +458,24 @@ ${prev.userInfo.phone}`,
               </label>
               {state.generatedLetter && (
                 <button
-                  onClick={handleDownload}
-                  className="flex items-center gap-2 px-3 py-2 border border-black rounded text-[12px] font-medium text-black hover:bg-[#fcfcfc] transition-all"
+                  onClick={handleCopyText}
+                  className={`flex items-center gap-2 px-3 py-2 border rounded text-[12px] font-medium transition-all ${
+                    isCopied
+                      ? "border-[#27AE60] text-[#27AE60] bg-green-50"
+                      : "border-black text-black hover:bg-[#fcfcfc]"
+                  }`}
                 >
-                  <Upload size={14} />
-                  Download
+                  {isCopied ? (
+                    <>
+                      <CheckCircle2 size={14} />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      Copy Text
+                    </>
+                  )}
                 </button>
               )}
             </div>
@@ -441,7 +504,10 @@ ${prev.userInfo.phone}`,
               ) : (
                 <div className="h-full flex items-center justify-center">
                   <div className="text-center">
-                    <FileText size={48} className="mx-auto text-[#7A7A8C] mb-4" />
+                    <FileText
+                      size={48}
+                      className="mx-auto text-[#7A7A8C] mb-4"
+                    />
                     <h3 className="text-[16px] font-normal text-black mb-2">
                       No cover letter yet
                     </h3>

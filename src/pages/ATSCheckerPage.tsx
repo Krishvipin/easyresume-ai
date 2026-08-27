@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Download, FileText, AlertCircle, Upload, Copy, CheckCircle2 } from "lucide-react";
+import { Download, FileText, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
 import { calculateATSScore } from "../utils/keyword-extractor";
 import { analyzeATS } from "../lib/gemini";
 import { getDynamicSuggestionsFromOpenRouter } from "../lib/openrouter";
-import { extractTextFromFile } from "../utils/file-parser";
 
 interface ATSCheckState {
   resume: string;
@@ -13,25 +12,20 @@ interface ATSCheckState {
   error?: string;
   results?: {
     score: number;
-    summary?: string;
-    strengths?: string[];
     suggestions: string[];
-    missingKeywords?: string[];
     improvements: string[];
-    isAI?: boolean;
+    rawData?: any;
   };
 }
 
 export default function ATSCheckerPage() {
-  const [copied, setCopied] = useState(false);
-  const [isExportCopied, setIsExportCopied] = useState(false);
   const [state, setState] = useState<ATSCheckState>({
     resume: "",
     jobDescription: "",
     isChecking: false,
   });
-
   const [loadingStep, setLoadingStep] = useState(0);
+  const [isCopied, setIsCopied] = useState(false);
 
   const loadingMessages = [
     "Scanning resume for ATS keywords...",
@@ -51,22 +45,6 @@ export default function ATSCheckerPage() {
     }
     return () => clearInterval(interval);
   }, [state.isChecking]);
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const content = await extractTextFromFile(file);
-      setState((prev) => ({ ...prev, resume: content }));
-    } catch (err) {
-      console.error("File parsing error:", err);
-      alert("Failed to read file. Please ensure it's a valid text, PDF, or DOCX file.");
-    }
-    
-    // Reset the input so the same file can be uploaded again
-    e.target.value = '';
-  };
 
   const handleResumeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setState({ ...state, resume: e.target.value });
@@ -89,32 +67,40 @@ export default function ATSCheckerPage() {
     try {
       // 1. Try Gemini AI for robust analysis
       try {
-        const aiResults = await analyzeATS(state.resume, state.jobDescription);
-        setState((prev) => ({
-          ...prev,
-          isChecking: false,
-          results: {
-            ...aiResults,
-            isAI: true,
-          },
-        }));
-        return;
+        const aiResults: any = await analyzeATS(state.resume, state.jobDescription);
+        
+        if (!("error" in aiResults)) {
+          setState((prev) => ({
+            ...prev,
+            isChecking: false,
+            results: {
+              score: aiResults.score,
+              suggestions: (aiResults.missingSkills || []).map((ms: any) => `Add the keyword "${ms.term}": ${ms.reason}`),
+              improvements: (aiResults.recommendations || []).map((r: any) => r.title),
+              rawData: aiResults,
+            },
+          }));
+          return;
+        }
       } catch (aiError) {
         console.warn("Gemini AI analysis failed, falling back to manual logic:", aiError);
       }
 
       // 2. Fallback to improved manual scoring based on keyword overlap
-      // 2. Fallback to improved manual scoring based on keyword overlap
       const manual = calculateATSScore(state.resume, state.jobDescription);
       let score = manual.score;
       let missing = manual.missing;
 
-      let summary: string | undefined;
-      let strengths: string[] | undefined;
       let suggestions: string[] = [];
-      let missingKeywords: string[] | undefined;
       let improvements: string[] = [];
-      let isAI = false;
+      let rawData: any = {
+        score,
+        scoreLabel: "Keyword Match",
+        summary: "This is a basic keyword matching score generated locally because AI providers are unavailable.",
+        matchedSkills: manual.matched.map((m: string) => ({ term: m, importance: "keyword" })),
+        missingSkills: manual.missing.map((m: string) => ({ term: m, importance: "keyword" })),
+        recommendations: missing.slice(0, 5).map((m: string) => ({ title: `Add missing keyword: ${m}`, description: "This keyword is present in the job description." }))
+      };
 
       // Wrap OpenRouter call in a timeout configured by environment variable
       const envTimeout = parseInt(import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60", 10);
@@ -124,15 +110,15 @@ export default function ATSCheckerPage() {
       const timeoutId = setTimeout(() => abortController.abort(), timeoutSeconds * 1000);
 
       try {
-        const dynamicFeedback = await getDynamicSuggestionsFromOpenRouter(state.resume, state.jobDescription, abortController.signal);
+        const dynamicFeedback: any = await getDynamicSuggestionsFromOpenRouter(state.resume, state.jobDescription, abortController.signal);
         clearTimeout(timeoutId);
-        score = dynamicFeedback.score ?? score;
-        summary = dynamicFeedback.summary;
-        strengths = dynamicFeedback.strengths;
-        suggestions = dynamicFeedback.suggestions || [];
-        missingKeywords = dynamicFeedback.missingKeywords;
-        improvements = dynamicFeedback.improvements || [];
-        isAI = true;
+        
+        if (!("error" in dynamicFeedback)) {
+          score = dynamicFeedback.score ?? score;
+          suggestions = (dynamicFeedback.missingSkills || []).map((ms: any) => `Add the keyword "${ms.term}": ${ms.reason}`);
+          improvements = (dynamicFeedback.recommendations || []).map((r: any) => r.title);
+          rawData = dynamicFeedback;
+        }
       } catch (openRouterError: any) {
         clearTimeout(timeoutId);
         
@@ -151,7 +137,6 @@ export default function ATSCheckerPage() {
           "Match the job description language",
           "Highlight technical skills mentioned in the job posting",
         ];
-        isAI = false;
       }
 
       setState((prev) => ({
@@ -159,12 +144,9 @@ export default function ATSCheckerPage() {
         isChecking: false,
         results: {
           score,
-          summary,
-          strengths,
           suggestions,
-          missingKeywords,
           improvements,
-          isAI,
+          rawData,
         },
       }));
     } catch (error: any) {
@@ -177,41 +159,61 @@ export default function ATSCheckerPage() {
     }
   };
 
-  const generateExportText = () => {
-    if (!state.results) return "";
-    let text = `ATS Compatibility Score: ${state.results.score}%\n\n`;
-    if (state.results.summary) text += `Executive Summary:\n${state.results.summary}\n\n`;
-    if (Array.isArray(state.results.strengths) && state.results.strengths.length) {
-      text += `Key Strengths:\n${state.results.strengths.map(s => `- ${s}`).join("\n")}\n\n`;
+  const handleCopyText = () => {
+    if (!state.results) return;
+    
+    let text = "";
+    if (state.results.rawData) {
+      const rd = state.results.rawData;
+      text += `ATS Compatibility Score: ${rd.score}% - ${rd.scoreLabel}\n\n`;
+      text += `Executive Summary:\n${rd.summary}\n\n`;
+      
+      if (rd.matchedSkills && rd.matchedSkills.length > 0) {
+        text += `Matched Skills:\n`;
+        rd.matchedSkills.forEach((s: any) => {
+          text += `- ${s.term} (${s.importance})\n`;
+        });
+        text += `\n`;
+      }
+      
+      if (rd.missingSkills && rd.missingSkills.length > 0) {
+        text += `Missing Skills:\n`;
+        rd.missingSkills.forEach((s: any) => {
+          text += `- ${s.term} (${s.importance})\n`;
+        });
+        text += `\n`;
+      }
+      
+      if (rd.recommendations && rd.recommendations.length > 0) {
+        text += `Top Recommendations:\n`;
+        rd.recommendations.forEach((r: any) => {
+          text += `- ${r.title}: ${r.description}\n`;
+        });
+        text += `\n`;
+      }
+    } else {
+      text = `ATS Compatibility Score: ${state.results.score}%\n\n`;
+      
+      if (state.results.suggestions && state.results.suggestions.length > 0) {
+        text += `Key Suggestions:\n`;
+        state.results.suggestions.forEach(s => {
+          text += `- ${s}\n`;
+        });
+        text += `\n`;
+      }
+      
+      if (state.results.improvements && state.results.improvements.length > 0) {
+        text += `Improvements to Make:\n`;
+        state.results.improvements.forEach(i => {
+          text += `- ${i}\n`;
+        });
+        text += `\n`;
+      }
     }
-    if (Array.isArray(state.results.missingKeywords) && state.results.missingKeywords.length) {
-      text += `Missing Keywords:\n${state.results.missingKeywords.join(", ")}\n\n`;
-    }
-    if (Array.isArray(state.results.suggestions) && state.results.suggestions.length) {
-      text += `Key Suggestions:\n${state.results.suggestions.map(s => `- ${s}`).join("\n")}\n\n`;
-    }
-    if (Array.isArray(state.results.improvements) && state.results.improvements.length) {
-      text += `Improvements to Make:\n${state.results.improvements.map(s => `- ${s}`).join("\n")}\n`;
-    }
-    return text;
-  };
-
-  const handleCopyTxt = () => {
-    navigator.clipboard.writeText(generateExportText());
-    setIsExportCopied(true);
-    setTimeout(() => setIsExportCopied(false), 2000);
-  };
-
-  const handleDownloadTxt = () => {
-    const blob = new Blob([generateExportText()], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "ATS_Review_Results.txt";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    navigator.clipboard.writeText(text.trim());
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   return (
@@ -253,7 +255,7 @@ export default function ATSCheckerPage() {
       )}
 
       <div className="flex-1 flex flex-col pt-20 pb-20">
-        <div className="max-w-7xl mx-auto px-4 w-full">
+      <div className="max-w-7xl mx-auto px-4 w-full">
         {/* Header */}
         <div className="flex flex-col gap-1 mb-12">
           <motion.h1
@@ -286,21 +288,9 @@ export default function ATSCheckerPage() {
           >
             {/* Resume Input */}
             <div className="border border-[#E5E7EB] rounded-xl p-5 flex flex-col gap-4">
-              <div className="flex justify-between items-center">
-                <label className="text-[16px] font-semibold text-gray-900">
-                  Your Resume
-                </label>
-                <label className="cursor-pointer flex items-center gap-1.5 text-sm text-[#0066FF] hover:text-blue-700 font-medium transition-colors">
-                  <Upload className="w-4 h-4" />
-                  Upload file
-                  <input
-                    type="file"
-                    accept=".txt,.pdf,.docx"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                  />
-                </label>
-              </div>
+              <label className="text-[16px] font-semibold text-gray-900">
+                Your Resume
+              </label>
               <div className="border border-[#E5E7EB] rounded-lg p-4">
                 <textarea
                   value={state.resume}
@@ -369,18 +359,7 @@ export default function ATSCheckerPage() {
               ) : state.results ? (
                 <div className="space-y-8">
                   {/* Score Card */}
-                  <div className={`bg-gradient-to-br ${
-                    state.results.score >= 80 
-                      ? "from-emerald-500 to-emerald-600" 
-                      : state.results.score >= 50
-                      ? "from-amber-500 to-amber-600"
-                      : "from-red-500 to-red-600"
-                  } rounded-2xl p-8 text-center text-white shadow-xl relative overflow-hidden transition-colors duration-500`}>
-                    {state.results.isAI && (
-                      <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                        AI Powered
-                      </div>
-                    )}
+                  <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-8 text-center text-white shadow-xl">
                     <p className="text-[14px] font-medium uppercase tracking-wide mb-4 opacity-90">
                       ATS Compatibility Score
                     </p>
@@ -388,85 +367,17 @@ export default function ATSCheckerPage() {
                       {state.results.score}%
                     </div>
                     <p className="text-[16px] opacity-90">
-                      {state.results.score >= 80 
-                        ? "Excellent match! Your resume is highly optimized." 
-                        : state.results.score >= 50 
-                        ? "Good match, but there's room for improvement."
-                        : "Low match. Consider adding more keywords from the job description."}
+                      Your resume is moderately optimized for ATS systems
                     </p>
                   </div>
-
-                  {/* Summary */}
-                  {state.results.summary && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
-                      <h4 className="text-[16px] font-semibold text-blue-900 mb-2">Executive Summary</h4>
-                      <p className="text-[14px] text-blue-800 leading-relaxed">
-                        {state.results.summary}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Strengths */}
-                  {Array.isArray(state.results.strengths) && state.results.strengths.length > 0 && (
-                    <div>
-                      <h4 className="text-[18px] font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        Key Strengths
-                      </h4>
-                      <div className="space-y-3">
-                        {state.results.strengths.map((strength, idx) => (
-                          <div key={idx} className="flex gap-3 items-start">
-                            <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <span className="text-blue-600 text-xs font-bold">✓</span>
-                            </div>
-                            <p className="text-[15px] text-gray-700 leading-relaxed">
-                              {strength}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Missing Keywords */}
-                  {Array.isArray(state.results.missingKeywords) && state.results.missingKeywords.length > 0 && (
-                    <div>
-                      <h4 className="text-[18px] font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                        Missing Keywords
-                      </h4>
-                      <div className="flex flex-wrap gap-2">
-                        {state.results.missingKeywords.map((kw, idx) => (
-                          <span key={idx} className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-sm font-medium">
-                            {kw}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Suggestions */}
                   <div className="space-y-6">
                     <div>
-                      <div className="flex justify-between items-center mb-4">
-                        <h4 className="text-[18px] font-semibold text-gray-900 flex items-center gap-2">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                          Key Suggestions
-                        </h4>
-                        <button 
-                          onClick={() => {
-                            if (state.results?.suggestions) {
-                              navigator.clipboard.writeText(state.results.suggestions.join('\n'));
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 2000);
-                            }
-                          }}
-                          className="flex items-center gap-1.5 text-[13px] font-medium text-gray-500 hover:text-gray-900 transition-colors bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200"
-                        >
-                          {copied ? <CheckCircle2 size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                          {copied ? "Copied!" : "Copy"}
-                        </button>
-                      </div>
+                      <h4 className="text-[18px] font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                        Key Suggestions
+                      </h4>
                       <div className="space-y-3">
                         {Array.isArray(state.results.suggestions) && state.results.suggestions.map((suggestion, idx) => (
                           <div key={idx} className="flex gap-3 items-start">
@@ -501,21 +412,14 @@ export default function ATSCheckerPage() {
                     </div>
                   </div>
 
-                  {/* Download Buttons */}
-                  <div className="flex items-center gap-3 pt-6 border-t border-gray-200">
+                  {/* Action Buttons */}
+                  <div className="flex justify-end items-center gap-3 pt-6 border-t border-gray-200">
                     <button
-                      onClick={handleCopyTxt}
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-all"
+                      onClick={handleCopyText}
+                      className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[14px] font-medium hover:bg-emerald-100 transition-all"
                     >
-                      {isExportCopied ? <CheckCircle2 size={16} className="text-emerald-500" /> : <Copy size={16} />}
-                      {isExportCopied ? "Copied!" : "Copy TXT"}
-                    </button>
-                    <button
-                      onClick={handleDownloadTxt}
-                      className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 transition-all"
-                    >
-                      <Download size={16} />
-                      Download TXT
+                      {isCopied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
+                      {isCopied ? "Copied!" : "Copy Text"}
                     </button>
                   </div>
                 </div>

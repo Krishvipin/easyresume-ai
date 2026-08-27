@@ -21,6 +21,8 @@ import {
   ChevronDown,
   Wrench,
   Award,
+  Copy,
+  CheckCircle2,
 } from "lucide-react";
 
 interface FormData {
@@ -159,6 +161,7 @@ export default function ResumePage() {
   });
 
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isTextCopied, setIsTextCopied] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("easyresume_data", JSON.stringify(formData));
@@ -205,6 +208,24 @@ export default function ResumePage() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const handleCopyText = () => {
+    const text = [
+      formData.fullName,
+      formData.role,
+      `${formData.email} | ${formData.phone} | ${formData.location}`,
+      formData.summary,
+      ...formData.experiences.map((e) => `${e.position} at ${e.company} (${e.duration})\n${e.description.map((d) => `- ${d}`).join("\n")}`),
+      ...formData.education.map((e) => `${e.degree} at ${e.school} (${e.duration})\n${e.details}`),
+      `Skills: ${formData.skills.join(", ")}`,
+      `Tools: ${formData.tools.join(", ")}`,
+      ...formData.certifications.map((c) => `${c.name} - ${c.issuer} (${c.date})`)
+    ].filter(Boolean).join("\n\n");
+    
+    navigator.clipboard.writeText(text);
+    setIsTextCopied(true);
+    setTimeout(() => setIsTextCopied(false), 2000);
   };
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -917,6 +938,26 @@ export default function ResumePage() {
                 >
                   <RotateCcw size={14} />
                   Reset
+                </button>
+                <button
+                  onClick={handleCopyText}
+                  className={`flex items-center gap-2 px-3 py-2 border rounded text-[12px] font-medium transition-all ${
+                    isTextCopied
+                      ? "border-emerald-500 text-emerald-600 bg-emerald-50"
+                      : "border-black text-black hover:bg-gray-50"
+                  }`}
+                >
+                  {isTextCopied ? (
+                    <>
+                      <CheckCircle2 size={14} />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      Copy Text
+                    </>
+                  )}
                 </button>
                 <input
                   type="file"

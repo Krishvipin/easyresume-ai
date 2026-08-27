@@ -11,13 +11,13 @@ export const Navbar = () => {
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 print:hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-4">
         <div className="flex justify-between items-center h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <img 
-              src="/assets/logos/EasyResume AI navbar.svg" 
-              alt="EasyResume AI" 
+            <img
+              src="/assets/logos/EasyResume AI navbar.svg"
+              alt="EasyResume AI"
               className="h-12 w-auto"
             />
           </Link>
@@ -42,7 +42,7 @@ export const Navbar = () => {
 
           {/* Action Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <button 
+            <button
               style={{
                 height: "43px",
                 display: "flex",
@@ -57,7 +57,7 @@ export const Navbar = () => {
                 color: "white",
                 fontSize: "14px",
                 fontWeight: 500,
-                transition: "all 0.2s ease"
+                transition: "all 0.2s ease",
               }}
               className="hover:opacity-90 active:scale-95 shadow-sm"
             >

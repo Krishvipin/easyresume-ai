@@ -1,33 +1,16 @@
 import { GoogleGenAI } from "@google/genai";
+import { generateATSPrompt } from "./ats-prompt";
+import type { ATSAnalysisResult } from "../types/ats";
 
 const apiKey = process.env.GEMINI_API_KEY || "";
 const ai = new GoogleGenAI({ apiKey });
 
-export async function analyzeATS(resume: string, jobDescription: string) {
+export async function analyzeATS(resume: string, jobDescription: string): Promise<ATSAnalysisResult | { error: true; message: string }> {
   if (!apiKey) {
     throw new Error("Gemini API key is not configured");
   }
 
-  const prompt = `
-    You are an expert ATS (Applicant Tracking System) analyzer. 
-    Analyze the following resume against the job description and provide:
-    1. A compatibility score (0-100).
-    2. Key suggestions to improve the resume for this specific job.
-    3. Specific improvements (keywords to add, experience to highlight).
-
-    Resume:
-    ${resume}
-
-    Job Description:
-    ${jobDescription}
-
-    Return the result in JSON format:
-    {
-      "score": number,
-      "suggestions": string[],
-      "improvements": string[]
-    }
-  `;
+  const prompt = generateATSPrompt(resume, jobDescription);
 
   try {
     const response = await ai.models.generateContent({
@@ -48,6 +31,29 @@ export async function analyzeATS(resume: string, jobDescription: string) {
     throw new Error("Failed to parse AI response");
   } catch (error) {
     console.error("Error analyzing ATS with Gemini:", error);
+    throw error;
+  }
+}
+
+export async function generateCoverLetter(prompt: string): Promise<string> {
+  if (!apiKey) {
+    throw new Error("Gemini API key is not configured");
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: prompt,
+    });
+    
+    const text = response.text;
+    if (!text) {
+      throw new Error("Empty response from AI");
+    }
+    
+    return text.trim();
+  } catch (error) {
+    console.error("Error generating cover letter with Gemini:", error);
     throw error;
   }
 }
