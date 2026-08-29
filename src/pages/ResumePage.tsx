@@ -28,6 +28,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { modifyResumeWithOpenRouter } from "../lib/openrouter";
+import { copyToClipboard } from "../lib/utils";
 
 export interface FormData {
   // Template & Personal Info
@@ -448,9 +449,12 @@ export default function ResumePage() {
       .filter(Boolean)
       .join("\n\n");
 
-    navigator.clipboard.writeText(text);
-    setIsModifiedTextCopied(true);
-    setTimeout(() => setIsModifiedTextCopied(false), 2000);
+    copyToClipboard(text).then((success) => {
+      if (success) {
+        setIsModifiedTextCopied(true);
+        setTimeout(() => setIsModifiedTextCopied(false), 2000);
+      }
+    });
   };
 
   const handleExportModifiedJSON = () => {
@@ -501,9 +505,12 @@ export default function ResumePage() {
       .filter(Boolean)
       .join("\n\n");
 
-    navigator.clipboard.writeText(text);
-    setIsTextCopied(true);
-    setTimeout(() => setIsTextCopied(false), 2000);
+    copyToClipboard(text).then((success) => {
+      if (success) {
+        setIsTextCopied(true);
+        setTimeout(() => setIsTextCopied(false), 2000);
+      }
+    });
   };
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1051,15 +1058,15 @@ export default function ResumePage() {
             <FormSection title="Skills" icon={<Zap size={20} />}>
               <div className="space-y-3">
                 {formData.skills.map((skill, index) => (
-                  <div key={index} className="flex gap-2">
+                  <div key={index} className="flex gap-2 w-full max-w-full">
                     <input
                       type="text"
                       value={skill}
                       onChange={(e) => updateSkill(index, e.target.value)}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="flex-1 min-w-0 px-3 sm:px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                       placeholder={`Skill ${index + 1}`}
                     />
-                    <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex bg-gray-50 border border-gray-200 rounded-lg flex-shrink-0">
                       <button
                         onClick={() => moveSkill(index, "up")}
                         disabled={index === 0}
@@ -1097,15 +1104,15 @@ export default function ResumePage() {
             <FormSection title="Tools" icon={<Wrench size={20} />}>
               <div className="space-y-3">
                 {formData.tools.map((tool, index) => (
-                  <div key={index} className="flex gap-2">
+                  <div key={index} className="flex gap-2 w-full max-w-full">
                     <input
                       type="text"
                       value={tool}
                       onChange={(e) => updateTool(index, e.target.value)}
-                      className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      className="flex-1 min-w-0 px-3 sm:px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                       placeholder={`Tool ${index + 1}`}
                     />
-                    <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="flex bg-gray-50 border border-gray-200 rounded-lg flex-shrink-0">
                       <button
                         onClick={() => moveTool(index, "up")}
                         disabled={index === 0}
@@ -1166,106 +1173,14 @@ export default function ResumePage() {
               </div>
             </FormSection>
 
-            {/* Dashed Top Divider */}
-            <div className="my-8 border-t border-dashed border-gray-300 print:hidden" />
-
-            {/* Tailor Resume Section */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm relative overflow-hidden flex flex-col gap-5 print:hidden">
-              {/* Corner Ribbon */}
-              <div className="absolute top-0 right-0 overflow-hidden w-24 h-24 pointer-events-none z-10">
-                <div className="bg-[#27AE60] text-white text-[11px] font-bold py-1 text-center w-32 absolute top-3 -right-8 rotate-45 shadow-sm tracking-wider uppercase">
-                  New
-                </div>
-              </div>
-
-              {/* Title Header */}
-              <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
-                <PenLine className="w-5 h-5 text-gray-800" />
-                <h3 className="text-[17px] font-bold text-gray-900 font-display tracking-tight">
-                  Tailor Resume
-                </h3>
-              </div>
-
-              {/* Job Description Textarea */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-semibold text-gray-700">
-                  Job Description
-                </label>
-                <div className="border border-gray-200 rounded-xl p-3.5 bg-gray-50/50 focus-within:bg-white focus-within:border-emerald-500 transition-all">
-                  <textarea
-                    value={tailorJobDescription}
-                    onChange={(e) => setTailorJobDescription(e.target.value)}
-                    placeholder="Enter your Job Description & Modify your resume instantly..."
-                    className="w-full h-[140px] text-[14px] text-gray-700 focus:outline-none resize-none bg-transparent placeholder-gray-400 leading-relaxed font-sans"
-                  />
-                </div>
-              </div>
-
-              {/* Optional ATS Report Input */}
-              <div className="flex flex-col gap-2">
-                <label className="text-[13px] font-semibold text-gray-700 flex items-center justify-between">
-                  <span>ATS Report / Suggestions</span>
-                  <span className="text-[11px] font-normal text-gray-400">
-                    (Optional)
-                  </span>
-                </label>
-                <div className="border border-gray-200 rounded-xl p-3 bg-gray-50/50 focus-within:bg-white focus-within:border-emerald-500 transition-all">
-                  <textarea
-                    value={tailorAtsReport}
-                    onChange={(e) => setTailorAtsReport(e.target.value)}
-                    placeholder="Paste ATS Score Report or key suggestions from the ATS Checker page..."
-                    className="w-full h-[80px] text-[13px] text-gray-700 focus:outline-none resize-none bg-transparent placeholder-gray-400 leading-relaxed font-sans"
-                  />
-                </div>
-              </div>
-
-              {/* Error or Success Messages */}
-              {tailorError && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-[13px] rounded-lg">
-                  {tailorError}
-                </div>
-              )}
-              {tailorSuccessMessage && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[13px] rounded-lg font-medium flex items-center gap-2">
-                  <CheckCircle2
-                    size={16}
-                    className="text-emerald-600 flex-shrink-0"
-                  />
-                  {tailorSuccessMessage}
-                </div>
-              )}
-
-              {/* Action Button */}
-              <button
-                onClick={handleTailorResume}
-                disabled={isTailoring || !tailorJobDescription.trim()}
-                className={`w-full py-3.5 px-6 rounded-xl text-[16px] font-semibold flex items-center justify-center gap-2 shadow-md transition-all ${
-                  tailorJobDescription.trim() && !isTailoring
-                    ? "bg-[#27AE60] hover:bg-[#1E8E4D] text-white shadow-emerald-200 hover:shadow-lg"
-                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                } disabled:opacity-60`}
-              >
-                {isTailoring ? (
-                  <>
-                    <RefreshCw size={18} className="animate-spin" />
-                    <span>Modifying Resume...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Modify Resume</span>
-                    <Sparkles size={18} />
-                  </>
-                )}
-              </button>
-            </div>
           </motion.div>
 
-          {/* Right Section - Preview Column */}
+          {/* Right Section - Default Resume Preview Column */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col gap-8 print:block print:w-full lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:overflow-y-scroll self-start"
+            className="flex flex-col gap-8 print:block print:w-full lg:sticky lg:top-24 self-start"
           >
             {/* Privacy Banner */}
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[13px] flex items-start gap-2 print:hidden">
@@ -1278,214 +1193,222 @@ export default function ResumePage() {
               </p>
             </div>
 
-            {USE_TABBED_VERSION_SWITCHER ? (
-              /* TABBED MODE */
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b border-[#DADAE3] pb-4 flex-wrap gap-2 print:hidden">
-                  <div className="flex items-center bg-gray-100 p-1 rounded-xl">
-                    <button
-                      onClick={() => setActiveResumeVersion("default")}
-                      className={`px-4 py-2 rounded-lg text-[13px] font-bold transition-all ${
-                        activeResumeVersion === "default"
-                          ? "bg-white text-black shadow-sm"
-                          : "text-gray-500 hover:text-black"
-                      }`}
-                    >
-                      Default Resume
-                    </button>
-                    <button
-                      onClick={() => setActiveResumeVersion("modified")}
-                      className={`px-4 py-2 rounded-lg text-[13px] font-bold flex items-center gap-1.5 transition-all ${
-                        activeResumeVersion === "modified"
-                          ? "bg-emerald-600 text-white shadow-sm"
-                          : "text-gray-500 hover:text-black"
-                      }`}
-                    >
-                      <span>Modified Resume</span>
-                      <Sparkles size={14} />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={
-                        activeResumeVersion === "modified"
-                          ? handleCopyModifiedText
-                          : handleCopyText
-                      }
-                      className="flex items-center gap-2 px-3 py-2 border border-black rounded text-[12px] font-medium text-black hover:bg-gray-50 transition-all"
-                    >
-                      <Copy size={14} />
-                      {activeResumeVersion === "modified"
-                        ? isModifiedTextCopied
-                          ? "Copied!"
-                          : "Copy Text"
-                        : isTextCopied
-                          ? "Copied!"
-                          : "Copy Text"}
-                    </button>
-                    <button
-                      onClick={
-                        activeResumeVersion === "modified"
-                          ? handleExportModifiedJSON
-                          : handleExportJSON
-                      }
-                      className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
-                    >
-                      <Download size={14} />
-                      Export JSON
-                    </button>
-                    <button
-                      onClick={handleExportPDF}
-                      className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white rounded text-[12px] font-medium hover:bg-red-600 transition-all"
-                    >
-                      <Download size={14} />
-                      Download PDF
-                    </button>
+            {/* DEFAULT RESUME CARD */}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between border-b border-[#DADAE3] pb-4 flex-wrap gap-2 print:hidden">
+                <div className="flex items-center gap-2">
+                  <div className="text-[22px] font-bold text-black font-display">
+                    Default Resume
                   </div>
                 </div>
 
-                <div
-                  className="bg-white overflow-auto print:overflow-visible"
-                  id="resumePreview"
-                >
-                  {(() => {
-                    const displayData =
-                      activeResumeVersion === "modified" && modifiedFormData
-                        ? modifiedFormData
-                        : formData;
-                    return (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                      >
-                        {displayData.template === "minimal" && (
-                          <MinimalTemplate data={displayData} />
-                        )}
-                        {displayData.template === "professional" && (
-                          <ProfessionalTemplate data={displayData} />
-                        )}
-                        {displayData.template === "modern" && (
-                          <ModernTemplate data={displayData} />
-                        )}
-                      </motion.div>
-                    );
-                  })()}
+                <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                  <button
+                    onClick={() => setShowResetConfirm(true)}
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-all"
+                  >
+                    <RotateCcw size={14} />
+                    Reset
+                  </button>
+                  <button
+                    onClick={handleCopyText}
+                    className={`flex items-center justify-center gap-2 w-[110px] py-2 border rounded text-[12px] font-medium transition-all ${
+                      isTextCopied
+                        ? "border-emerald-500 text-emerald-600 bg-emerald-50"
+                        : "border-black text-black hover:bg-gray-50"
+                    }`}
+                  >
+                    {isTextCopied ? (
+                      <CheckCircle2 size={14} />
+                    ) : (
+                      <Copy size={14} />
+                    )}
+                    {isTextCopied ? "Copied!" : "Copy Text"}
+                  </button>
+                  <input
+                    type="file"
+                    accept="application/json"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleImportJSON}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-3 py-2 border border-black rounded text-[12px] font-medium text-black hover:bg-[#fcfcfc] transition-all"
+                  >
+                    <Upload size={14} />
+                    Import JSON
+                  </button>
+                  <button
+                    onClick={handleExportJSON}
+                    className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
+                  >
+                    <Download size={14} />
+                    Export JSON
+                  </button>
+                  <button
+                    onClick={handleExportPDF}
+                    className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white rounded text-[12px] font-medium hover:bg-red-600 transition-all"
+                  >
+                    <Download size={14} />
+                    Download PDF
+                  </button>
                 </div>
               </div>
-            ) : (
-              /* STACKED MODE (USE_TABBED_VERSION_SWITCHER === false) */
-              <div className="flex flex-col gap-10">
-                {/* 1. DEFAULT RESUME CARD */}
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between border-b border-[#DADAE3] pb-4 flex-wrap gap-2 print:hidden">
-                    <div className="flex items-center gap-2">
-                      <div className="text-[22px] font-bold text-black font-display">
-                        Default Resume
-                      </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
-                      <button
-                        onClick={() => setShowResetConfirm(true)}
-                        className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-all"
-                      >
-                        <RotateCcw size={14} />
-                        Reset
-                      </button>
-                      <button
-                        onClick={handleCopyText}
-                        className={`flex items-center justify-center gap-2 w-[110px] py-2 border rounded text-[12px] font-medium transition-all ${
-                          isTextCopied
-                            ? "border-emerald-500 text-emerald-600 bg-emerald-50"
-                            : "border-black text-black hover:bg-gray-50"
-                        }`}
-                      >
-                        {isTextCopied ? (
-                          <CheckCircle2 size={14} />
-                        ) : (
-                          <Copy size={14} />
-                        )}
-                        {isTextCopied ? "Copied!" : "Copy Text"}
-                      </button>
-                      <input
-                        type="file"
-                        accept="application/json"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handleImportJSON}
-                      />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-2 px-3 py-2 border border-black rounded text-[12px] font-medium text-black hover:bg-[#fcfcfc] transition-all"
-                      >
-                        <Upload size={14} />
-                        Import JSON
-                      </button>
-                      <button
-                        onClick={handleExportJSON}
-                        className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
-                      >
-                        <Download size={14} />
-                        Export JSON
-                      </button>
-                      <button
-                        onClick={handleExportPDF}
-                        className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white rounded text-[12px] font-medium hover:bg-red-600 transition-all"
-                      >
-                        <Download size={14} />
-                        Download PDF
-                      </button>
-                    </div>
-                  </div>
-
-                  <div
-                    className="bg-white overflow-x-auto print:overflow-visible rounded-xl shadow-sm border border-gray-100 p-2 sm:p-4"
-                    id="resumePreview"
+              <div
+                className="bg-white overflow-x-auto print:overflow-visible"
+                id="resumePreview"
+              >
+                {formData.fullName || formData.role || formData.summary ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
                   >
-                    {formData.fullName || formData.role || formData.summary ? (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                      >
-                        {formData.template === "minimal" && (
-                          <MinimalTemplate data={formData} />
-                        )}
-                        {formData.template === "professional" && (
-                          <ProfessionalTemplate data={formData} />
-                        )}
-                        {formData.template === "modern" && (
-                          <ModernTemplate data={formData} />
-                        )}
-                      </motion.div>
-                    ) : (
-                      <div className="text-center py-20">
-                        <FileText
-                          size={48}
-                          className="mx-auto text-[#7A7A8C] mb-4"
-                        />
-                        <h3 className="text-[16px] font-normal text-black mb-2">
-                          No resume data yet
-                        </h3>
-                        <p className="text-[16px] font-normal text-[#7A7A8C] max-w-xs mx-auto">
-                          Fill in your details on the left to see a live preview
-                          of your resume.
-                        </p>
-                      </div>
+                    {formData.template === "minimal" && (
+                      <MinimalTemplate data={formData} />
                     )}
+                    {formData.template === "professional" && (
+                      <ProfessionalTemplate data={formData} />
+                    )}
+                    {formData.template === "modern" && (
+                      <ModernTemplate data={formData} />
+                    )}
+                  </motion.div>
+                ) : (
+                  <div className="text-center py-20">
+                    <FileText
+                      size={48}
+                      className="mx-auto text-[#7A7A8C] mb-4"
+                    />
+                    <h3 className="text-[16px] font-normal text-black mb-2">
+                      No resume data yet
+                    </h3>
+                    <p className="text-[16px] font-normal text-[#7A7A8C] max-w-xs mx-auto">
+                      Fill in your details on the left to see a live preview
+                      of your resume.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* BOTTOM SECTION: DEDICATED FULL-WIDTH MODIFY RESUME SECTION */}
+        <div className="mt-16 pt-10 border-t-2 border-dashed border-emerald-500/30 print:hidden" id="modify-resume">
+          <div className="flex flex-col gap-6">
+            {/* Section Header */}
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-emerald-200 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-xl">
+                  <Sparkles size={24} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 font-display flex items-center gap-2">
+                    Modify Resume
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Tailor your resume for specific job descriptions without altering your default resume.
+                  </p>
+                </div>
+              </div>
+              <span className="px-3.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold uppercase tracking-wider">
+                AI Powered
+              </span>
+            </div>
+
+            {/* Modify Resume Two-Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-[450px_1fr] xl:grid-cols-[500px_1fr] gap-8">
+              {/* Left Column: Job Description & ATS Suggestions Input Box */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm relative overflow-hidden flex flex-col gap-5">
+                <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
+                  <PenLine className="w-5 h-5 text-gray-800" />
+                  <h3 className="text-[17px] font-bold text-gray-900 font-display tracking-tight">
+                    Modify Resume Inputs
+                  </h3>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[13px] font-semibold text-gray-700">
+                    Job Description
+                  </label>
+                  <div className="border border-gray-200 rounded-xl p-3.5 bg-gray-50/50 focus-within:bg-white focus-within:border-emerald-500 transition-all">
+                    <textarea
+                      value={tailorJobDescription}
+                      onChange={(e) => setTailorJobDescription(e.target.value)}
+                      placeholder="Enter your Job Description & Modify your resume instantly..."
+                      className="w-full h-[140px] text-[14px] text-gray-700 focus:outline-none resize-none bg-transparent placeholder-gray-400 leading-relaxed font-sans"
+                    />
                   </div>
                 </div>
 
-                {/* 2. MODIFIED RESUME CARD (STACKED BELOW DEFAULT RESUME) */}
-                {modifiedFormData && (
-                  <div className="flex flex-col gap-4 border-t-2 border-emerald-500/20 pt-8 print:hidden">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[13px] font-semibold text-gray-700 flex items-center justify-between">
+                    <span>ATS Report / Suggestions</span>
+                    <span className="text-[11px] font-normal text-gray-400">
+                      (Optional)
+                    </span>
+                  </label>
+                  <div className="border border-gray-200 rounded-xl p-3 bg-gray-50/50 focus-within:bg-white focus-within:border-emerald-500 transition-all">
+                    <textarea
+                      value={tailorAtsReport}
+                      onChange={(e) => setTailorAtsReport(e.target.value)}
+                      placeholder="Paste ATS Score Report or key suggestions from the ATS Checker page..."
+                      className="w-full h-[80px] text-[13px] text-gray-700 focus:outline-none resize-none bg-transparent placeholder-gray-400 leading-relaxed font-sans"
+                    />
+                  </div>
+                </div>
+
+                {tailorError && (
+                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-[13px] rounded-lg">
+                    {tailorError}
+                  </div>
+                )}
+                {tailorSuccessMessage && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[13px] rounded-lg font-medium flex items-center gap-2">
+                    <CheckCircle2
+                      size={16}
+                      className="text-emerald-600 flex-shrink-0"
+                    />
+                    {tailorSuccessMessage}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleTailorResume}
+                  disabled={isTailoring || !tailorJobDescription.trim()}
+                  className={`w-full py-3.5 px-6 rounded-xl text-[16px] font-semibold flex items-center justify-center gap-2 shadow-md transition-all ${
+                    tailorJobDescription.trim() && !isTailoring
+                      ? "bg-[#27AE60] hover:bg-[#1E8E4D] text-white shadow-emerald-200 hover:shadow-lg"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  } disabled:opacity-60`}
+                >
+                  {isTailoring ? (
+                    <>
+                      <RefreshCw size={18} className="animate-spin" />
+                      <span>Modifying Resume...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Modify Resume</span>
+                      <Sparkles size={18} />
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Right Column: AI Tailored Modified Resume Card */}
+              <div className="flex flex-col gap-4">
+                {modifiedFormData ? (
+                  <div className="flex flex-col gap-6 bg-[#F4FAF6] border-2 border-[#27AE60]/40 rounded-2xl p-4 sm:p-6 shadow-md">
                     <div className="flex items-center justify-between border-b border-emerald-200 pb-4 flex-wrap gap-2">
                       <div className="flex items-center gap-2.5">
-                        <div className="text-[22px] font-bold text-emerald-900 font-display flex items-center gap-2">
+                        <div className="text-[22px] font-bold text-emerald-950 font-display flex items-center gap-2">
                           Modified Resume
                           <Sparkles size={18} className="text-emerald-600" />
                         </div>
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[11px] font-bold uppercase tracking-wider">
                           AI Tailored
                         </span>
                       </div>
@@ -1496,7 +1419,7 @@ export default function ResumePage() {
                           className={`flex items-center justify-center gap-2 w-[165px] py-2 border rounded text-[12px] font-medium transition-all ${
                             isModifiedTextCopied
                               ? "border-emerald-500 text-emerald-600 bg-emerald-50"
-                              : "border-emerald-700 text-emerald-800 hover:bg-emerald-50"
+                              : "border-emerald-700 text-emerald-800 bg-white hover:bg-emerald-50"
                           }`}
                         >
                           {isModifiedTextCopied ? (
@@ -1510,15 +1433,22 @@ export default function ResumePage() {
                         </button>
                         <button
                           onClick={handleExportModifiedJSON}
-                          className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
+                          className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all shadow-sm"
                         >
                           <Download size={14} />
                           Export Modified JSON
                         </button>
                         <button
+                          onClick={handleExportPDF}
+                          className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white rounded text-[12px] font-medium hover:bg-red-600 transition-all shadow-sm"
+                        >
+                          <Download size={14} />
+                          Download PDF
+                        </button>
+                        <button
                           onClick={handleClearModifiedResume}
                           title="Clear / Discard Modified Resume"
-                          className="flex items-center gap-1.5 px-3 py-2 border border-red-200 text-red-600 rounded text-[12px] font-medium hover:bg-red-50 hover:border-red-300 transition-all"
+                          className="flex items-center gap-1.5 px-3 py-2 border border-red-200 text-red-600 bg-white rounded text-[12px] font-medium hover:bg-red-50 hover:border-red-300 transition-all shadow-sm"
                         >
                           <Trash2 size={14} />
                           <span>Clear</span>
@@ -1526,7 +1456,10 @@ export default function ResumePage() {
                       </div>
                     </div>
 
-                    <div className="bg-white overflow-x-auto rounded-xl shadow-sm border border-emerald-100 p-2 sm:p-4">
+                    <div
+                      id="modifiedResumePreview"
+                      className="bg-white overflow-x-auto print:overflow-visible rounded-xl p-3 sm:p-5 border border-emerald-100 shadow-sm"
+                    >
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1543,10 +1476,22 @@ export default function ResumePage() {
                       </motion.div>
                     </div>
                   </div>
+                ) : (
+                  <div className="bg-emerald-50/40 border-2 border-dashed border-emerald-200/80 rounded-2xl p-8 sm:p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
+                    <div className="p-4 bg-emerald-100/80 rounded-full text-emerald-600 mb-4">
+                      <Sparkles size={36} />
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900 mb-2 font-display">
+                      No Modified Resume Yet
+                    </h4>
+                    <p className="text-sm text-gray-600 max-w-md leading-relaxed">
+                      Enter your target Job Description on the left and click <strong>Modify Resume ✨</strong>. Your tailored resume will appear right here as a separate entity without altering your default resume.
+                    </p>
+                  </div>
                 )}
               </div>
-            )}
-          </motion.div>
+            </div>
+          </div>
         </div>
       </div>
       {showResetConfirm && (
@@ -1594,7 +1539,7 @@ function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+    <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm overflow-hidden w-full max-w-full box-border">
       <div className="flex items-center gap-3 mb-6">
         {icon && <div className="text-gray-900">{icon}</div>}
         <h3 className="text-[18px] font-semibold text-gray-900">{title}</h3>
@@ -1651,10 +1596,10 @@ function ExperienceForm({
   isLast: boolean;
 }) {
   return (
-    <div className="border border-gray-200 rounded-xl p-5 space-y-4">
+    <div className="border border-gray-200 rounded-xl p-3.5 sm:p-5 space-y-4 overflow-hidden w-full max-w-full box-border">
       <div className="flex justify-between items-center mb-4">
         <h4 className="text-[16px] font-medium text-gray-900">Experience</h4>
-        <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="flex bg-gray-50 border border-gray-200 rounded-lg flex-shrink-0">
           <button
             onClick={onMoveUp}
             disabled={isFirst}
@@ -1700,7 +1645,7 @@ function ExperienceForm({
           </label>
           <div className="space-y-3">
             {experience.description.map((desc: string, index: number) => (
-              <div key={index} className="flex gap-2">
+              <div key={index} className="flex gap-2 w-full max-w-full">
                 <input
                   type="text"
                   value={desc}
@@ -1709,10 +1654,10 @@ function ExperienceForm({
                     newDesc[index] = e.target.value;
                     onUpdate("description", newDesc);
                   }}
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="flex-1 min-w-0 px-3 sm:px-4 py-3 border border-gray-300 rounded-lg text-[14px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="Write a bullet point..."
                 />
-                <div className="flex bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="flex bg-gray-50 border border-gray-200 rounded-lg flex-shrink-0">
                   <button
                     onClick={() => {
                       const newDesc = [...experience.description];
@@ -1912,7 +1857,7 @@ function MinimalTemplate({ data }: { data: FormData }) {
   const links = data.linksPortfolio.filter((l) => l.url).map((l) => l.url);
   return (
     <div
-      className="p-8 space-y-6 bg-white w-full max-w-[210mm] mx-auto border border-gray-200 print:border-none"
+      className="p-8 space-y-6 bg-white w-full max-w-[210mm] print:max-w-none print:w-full mx-auto border border-gray-200 print:border-none print:shadow-none"
       style={{ minHeight: "297mm" }}
     >
       <div className="flex items-start gap-6 mb-6">
@@ -2111,7 +2056,7 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
   const links = data.linksPortfolio.filter((l) => l.url).map((l) => l.url);
   return (
     <div
-      className="p-8 bg-white w-[210mm] max-w-full mx-auto border border-gray-200 print:border-none"
+      className="p-8 bg-white w-[210mm] max-w-full print:max-w-none print:w-full mx-auto border border-gray-200 print:border-none print:shadow-none"
       style={{ minHeight: "297mm" }}
     >
       <div
@@ -2333,7 +2278,7 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
 function ModernTemplate({ data }: { data: FormData }) {
   return (
     <div
-      className="flex bg-white w-full max-w-[210mm] print:max-w-none print:w-full print:mx-0 mx-auto border border-gray-200 print:border-none relative"
+      className="flex bg-white w-full max-w-[210mm] print:max-w-none print:w-full print:mx-0 mx-auto border border-gray-200 print:border-none print:shadow-none relative"
       style={{
         minHeight: "297mm",
       }}

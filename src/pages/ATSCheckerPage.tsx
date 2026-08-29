@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Download, FileText, AlertCircle, Copy, CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
 import { calculateATSScore } from "../utils/keyword-extractor";
 import { getDynamicSuggestionsFromOpenRouter } from "../lib/openrouter";
+import { copyToClipboard } from "../lib/utils";
 
 interface ATSCheckState {
   resume: string;
@@ -288,9 +289,12 @@ export default function ATSCheckerPage() {
       }
     }
     
-    navigator.clipboard.writeText(text.trim());
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
+    copyToClipboard(text.trim()).then((success) => {
+      if (success) {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      }
+    });
   };
 
   return (

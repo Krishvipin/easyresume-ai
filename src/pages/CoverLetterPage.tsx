@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { copyToClipboard } from "../lib/utils";
 import {
   Upload,
   FileText,
@@ -208,12 +209,10 @@ export default function CoverLetterPage() {
 
   const handleCopyText = async () => {
     if (!state.generatedLetter) return;
-    try {
-      await navigator.clipboard.writeText(state.generatedLetter);
+    const success = await copyToClipboard(state.generatedLetter);
+    if (success) {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy text:", err);
     }
   };
 

@@ -6,18 +6,27 @@ const logDev = (...args: any[]) => {
 };
 
 /**
+ * Active OpenRouter free model endpoints list.
+ */
+const ACTIVE_FREE_MODELS = [
+  "openrouter/free",
+  "nvidia/nemotron-3.5-lightning:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "dots-studio/dots-3-note-preview:free",
+  "inclusionai/ling-3.0-flash-fin:free",
+];
+
+/**
  * Robust JSON extraction and sanitization helper for OpenRouter LLM outputs.
- * Handles markdown fences, text headers/footers, trailing commas, and control characters.
- * Cross-browser safe (avoids lookbehind assertions for Safari / legacy JS engines).
+ * Handles markdown fences, text headers/footers, and trailing commas cleanly.
  */
 function extractAndParseJSON<T = any>(rawText: string): T | null {
   if (!rawText || typeof rawText !== "string") return null;
 
   // 1. Strip Markdown code block fences
   let cleaned = rawText
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/g, "")
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
     .trim();
 
   // 2. Extract substring between first '{' and last '}'
@@ -37,16 +46,16 @@ function extractAndParseJSON<T = any>(rawText: string): T | null {
       return parsed as T;
     }
   } catch (directErr) {
-    logDev("[OpenRouter] Direct JSON.parse failed. Attempting JSON sanitization...");
+    logDev("[OpenRouter] Direct JSON.parse failed. Attempting JSON sanitization:", directErr);
   }
 
-  // 4. Fallback: Sanitize common model formatting issues (trailing commas, unescaped newlines)
+  // 4. Fallback: Sanitize common model formatting issues (trailing commas, control chars)
   try {
-    const sanitized = jsonSubstring
-      // Remove trailing commas in objects or arrays: e.g. ", ]" or ", }"
-      .replace(/,\s*([\]}])/g, "$1")
-      // Remove or normalize raw line breaks inside values
-      .replace(/[\r\n]+/g, "\\n");
+    // Remove trailing commas before closing brackets/braces (e.g. ", ]" or ", }")
+    let sanitized = jsonSubstring.replace(/,\s*([\]}])/g, "$1");
+
+    // Strip unescaped control characters (ASCII 0-31 except tab/newline)
+    sanitized = sanitized.replace(/[\x00-\x09\x0B\x0C\x0E-\x1F]/g, "");
 
     const parsed = JSON.parse(sanitized);
     if (parsed && typeof parsed === "object") {
@@ -54,7 +63,7 @@ function extractAndParseJSON<T = any>(rawText: string): T | null {
       return parsed as T;
     }
   } catch (sanitizedErr) {
-    logDev("[OpenRouter] Sanitized JSON parse failed.");
+    logDev("[OpenRouter] Sanitized JSON parse failed:", sanitizedErr);
   }
 
   return null;
@@ -77,14 +86,7 @@ export const getDynamicSuggestionsFromOpenRouter = async (
   }
 
   const prompt = generateATSPrompt(resume, jobDescription);
-
-  const modelsToTry = [
-    "openrouter/free",
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "google/gemma-2-9b-it:free",
-    "qwen/qwen-2.5-7b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
-  ];
+  const modelsToTry = ACTIVE_FREE_MODELS;
 
   let lastError: any = null;
   logDev("[OpenRouter] Initiating ATS analysis flow across candidate models:", modelsToTry);
@@ -97,7 +99,7 @@ export const getDynamicSuggestionsFromOpenRouter = async (
 
     logDev(`[OpenRouter] Trying model '${model}'...`);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 22000); // 22s limit per model attempt
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     const handleParentAbort = () => controller.abort();
     if (parentSignal) {
@@ -137,10 +139,15 @@ export const getDynamicSuggestionsFromOpenRouter = async (
         let errorMsg = response.statusText;
         try {
           const errorBody = await response.json();
-          errorMsg = JSON.stringify(errorBody.error || errorBody);
-        } catch (e) {
-          // Ignore if not JSON
+          errorMsg = errorBody.error?.message || JSON.stringify(errorBody.error || errorBody);
+        } catch (e) {}
+
+        if (response.status === 429) {
+          logDev(`[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`);
+          lastError = new Error("OpenRouter free tier daily rate limit reached (50 requests/day). Please wait a few minutes or try again later.");
+          continue;
         }
+
         logDev(`[OpenRouter] Model '${model}' HTTP Error (${response.status}):`, errorMsg);
         throw new Error(`OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`);
       }
@@ -195,14 +202,7 @@ export const generateCoverLetterFromOpenRouter = async (
     throw new Error("OpenRouter API key is not configured");
   }
 
-  const modelsToTry = [
-    "openrouter/free",
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "google/gemma-2-9b-it:free",
-    "qwen/qwen-2.5-7b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
-  ];
-
+  const modelsToTry = ACTIVE_FREE_MODELS;
   let lastError: any = null;
 
   for (const model of modelsToTry) {
@@ -252,8 +252,15 @@ export const generateCoverLetterFromOpenRouter = async (
         let errorMsg = response.statusText;
         try {
           const errorBody = await response.json();
-          errorMsg = JSON.stringify(errorBody.error || errorBody);
+          errorMsg = errorBody.error?.message || JSON.stringify(errorBody.error || errorBody);
         } catch (e) {}
+
+        if (response.status === 429) {
+          logDev(`[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`);
+          lastError = new Error("OpenRouter free tier daily rate limit reached. Please wait a few minutes or try again later.");
+          continue;
+        }
+
         throw new Error(`OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`);
       }
 
@@ -318,14 +325,7 @@ export const modifyResumeWithOpenRouter = async (
   const { generateTailorResumePrompt } = await import("./tailor-prompt");
   const prompt = generateTailorResumePrompt(formData, jobDescription, atsReport);
 
-  const modelsToTry = [
-    "openrouter/free",
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "google/gemma-2-9b-it:free",
-    "qwen/qwen-2.5-7b-instruct:free",
-    "mistralai/mistral-7b-instruct:free",
-  ];
-
+  const modelsToTry = ACTIVE_FREE_MODELS;
   let lastError: any = null;
   logDev("[OpenRouter] Initiating Tailor Resume flow across models:", modelsToTry);
 
@@ -336,7 +336,7 @@ export const modifyResumeWithOpenRouter = async (
 
     logDev(`[OpenRouter] Trying model '${model}' for resume tailoring...`);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s per attempt limit
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     const handleParentAbort = () => controller.abort();
     if (parentSignal) {
@@ -376,8 +376,15 @@ export const modifyResumeWithOpenRouter = async (
         let errorMsg = response.statusText;
         try {
           const errorBody = await response.json();
-          errorMsg = JSON.stringify(errorBody.error || errorBody);
+          errorMsg = errorBody.error?.message || JSON.stringify(errorBody.error || errorBody);
         } catch (e) {}
+
+        if (response.status === 429) {
+          logDev(`[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`);
+          lastError = new Error("OpenRouter free tier daily rate limit reached. Please wait a few minutes or try again later.");
+          continue;
+        }
+
         throw new Error(`OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`);
       }
 
