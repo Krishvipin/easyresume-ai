@@ -23,9 +23,13 @@ import {
   Award,
   Copy,
   CheckCircle2,
+  Sparkles,
+  PenLine,
+  RefreshCw,
 } from "lucide-react";
+import { modifyResumeWithOpenRouter } from "../lib/openrouter";
 
-interface FormData {
+export interface FormData {
   // Template & Personal Info
   template: "minimal" | "modern" | "professional";
   primaryColor: string;
@@ -136,6 +140,10 @@ const initialFormData: FormData = {
   ],
 };
 
+// Feature flag: set to false to render Modified Resume stacked below Default Resume,
+// set to true to use tabbed version switcher in preview header.
+const USE_TABBED_VERSION_SWITCHER = false;
+
 export default function ResumePage() {
   const [formData, setFormData] = useState<FormData>(() => {
     const saved = localStorage.getItem("easyresume_data");
@@ -151,7 +159,8 @@ export default function ResumePage() {
           }));
         }
         if (!parsed.tools) parsed.tools = initialFormData.tools;
-        if (!parsed.certifications) parsed.certifications = initialFormData.certifications;
+        if (!parsed.certifications)
+          parsed.certifications = initialFormData.certifications;
         return parsed;
       } catch (e) {
         return initialFormData;
@@ -160,12 +169,167 @@ export default function ResumePage() {
     return initialFormData;
   });
 
+  const [modifiedFormData, setModifiedFormData] = useState<FormData | null>(
+    () => {
+      const saved = localStorage.getItem("easyresume_modified_data");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    },
+  );
+
+  const [activeResumeVersion, setActiveResumeVersion] = useState<
+    "default" | "modified"
+  >("default");
+  const [isModifiedTextCopied, setIsModifiedTextCopied] = useState(false);
+
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isTextCopied, setIsTextCopied] = useState(false);
+
+  const [tailorJobDescription, setTailorJobDescription] = useState("");
+  const [tailorAtsReport, setTailorAtsReport] = useState("");
+  const [isTailoring, setIsTailoring] = useState(false);
+  const [tailorError, setTailorError] = useState<string | undefined>();
+  const [tailorSuccessMessage, setTailorSuccessMessage] = useState<
+    string | undefined
+  >();
+
+  const handleTailorResume = async () => {
+    if (!tailorJobDescription.trim()) {
+      alert("Please enter a Job Description to modify your resume.");
+      return;
+    }
+
+    setIsTailoring(true);
+    setTailorError(undefined);
+    setTailorSuccessMessage(undefined);
+
+    try {
+      const tailored = await modifyResumeWithOpenRouter(
+        formData,
+        tailorJobDescription,
+        tailorAtsReport,
+      );
+
+      if (tailored) {
+        const newModifiedData: FormData = {
+          ...formData,
+          summary: tailored.summary || formData.summary,
+          experiences:
+            Array.isArray(tailored.experiences) &&
+            tailored.experiences.length > 0
+              ? tailored.experiences.map((exp: any, idx: number) => ({
+                  id:
+                    formData.experiences[idx]?.id ||
+                    exp.id ||
+                    `exp-${Date.now()}-${idx}`,
+                  position:
+                    exp.position ||
+                    formData.experiences[idx]?.position ||
+                    "Role",
+                  company:
+                    exp.company ||
+                    formData.experiences[idx]?.company ||
+                    "Company",
+                  duration:
+                    exp.duration ||
+                    formData.experiences[idx]?.duration ||
+                    "Duration",
+                  description: Array.isArray(exp.description)
+                    ? exp.description
+                    : typeof exp.description === "string"
+                      ? [exp.description]
+                      : formData.experiences[idx]?.description || [],
+                }))
+              : formData.experiences,
+          skills:
+            Array.isArray(tailored.skills) && tailored.skills.length > 0
+              ? tailored.skills
+              : formData.skills,
+          tools:
+            Array.isArray(tailored.tools) && tailored.tools.length > 0
+              ? tailored.tools
+              : formData.tools,
+        };
+
+        setModifiedFormData(newModifiedData);
+        localStorage.setItem(
+          "easyresume_modified_data",
+          JSON.stringify(newModifiedData),
+        );
+
+        if (USE_TABBED_VERSION_SWITCHER) {
+          setActiveResumeVersion("modified");
+        }
+
+        setTailorSuccessMessage(
+          "✨ Modified Resume created! Scroll down or preview below.",
+        );
+        setTimeout(() => setTailorSuccessMessage(undefined), 6000);
+      }
+    } catch (err: any) {
+      console.error("Resume tailoring failed:", err);
+      setTailorError(
+        err.message || "Failed to modify resume. Please try again.",
+      );
+    } finally {
+      setIsTailoring(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem("easyresume_data", JSON.stringify(formData));
   }, [formData]);
+
+  useEffect(() => {
+    if (modifiedFormData) {
+      localStorage.setItem(
+        "easyresume_modified_data",
+        JSON.stringify(modifiedFormData),
+      );
+    } else {
+      localStorage.removeItem("easyresume_modified_data");
+    }
+  }, [modifiedFormData]);
+
+  const logDev = (...args: any[]) => {
+    console.log("[EasyResume AI]", ...args);
+  };
+
+  const handleTemplateChange = (
+    tmpl: "minimal" | "modern" | "professional",
+  ) => {
+    logDev(
+      `Template changed to '${tmpl}'. Syncing Default and Modified resumes.`,
+    );
+    setFormData((prev) => ({ ...prev, template: tmpl }));
+    setModifiedFormData((prev) => (prev ? { ...prev, template: tmpl } : null));
+  };
+
+  const handlePrimaryColorChange = (color: string) => {
+    logDev(
+      `Primary color changed to '${color}'. Syncing Default and Modified resumes.`,
+    );
+    setFormData((prev) => ({ ...prev, primaryColor: color }));
+    setModifiedFormData((prev) =>
+      prev ? { ...prev, primaryColor: color } : null,
+    );
+  };
+
+  const handleSecondaryColorChange = (color: string) => {
+    logDev(
+      `Secondary color changed to '${color}'. Syncing Default and Modified resumes.`,
+    );
+    setFormData((prev) => ({ ...prev, secondaryColor: color }));
+    setModifiedFormData((prev) =>
+      prev ? { ...prev, secondaryColor: color } : null,
+    );
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -175,20 +339,23 @@ export default function ResumePage() {
     if (file && file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setFormData((prev) => ({
-          ...prev,
-          photo: event.target?.result as string,
-        }));
+        const photoData = event.target?.result as string;
+        logDev("Profile photo updated. Syncing Default and Modified resumes.");
+        setFormData((prev) => ({ ...prev, photo: photoData }));
+        setModifiedFormData((prev) =>
+          prev ? { ...prev, photo: photoData } : null,
+        );
       };
       reader.readAsDataURL(file);
     }
   };
 
   const removePhoto = () => {
-    setFormData((prev) => ({
-      ...prev,
-      photo: undefined,
-    }));
+    logDev("Profile photo removed. Syncing Default and Modified resumes.");
+    setFormData((prev) => ({ ...prev, photo: undefined }));
+    setModifiedFormData((prev) =>
+      prev ? { ...prev, photo: undefined } : null,
+    );
   };
 
   const handleExportJSON = () => {
@@ -210,19 +377,76 @@ export default function ResumePage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleCopyModifiedText = () => {
+    if (!modifiedFormData) return;
+    const text = [
+      modifiedFormData.fullName,
+      modifiedFormData.role,
+      `${modifiedFormData.email} | ${modifiedFormData.phone} | ${modifiedFormData.location}`,
+      modifiedFormData.summary,
+      ...modifiedFormData.experiences.map(
+        (e) =>
+          `${e.position} at ${e.company} (${e.duration})\n${e.description.map((d) => `- ${d}`).join("\n")}`,
+      ),
+      ...modifiedFormData.education.map(
+        (e) => `${e.degree} at ${e.school} (${e.duration})\n${e.details}`,
+      ),
+      `Skills: ${modifiedFormData.skills.join(", ")}`,
+      `Tools: ${modifiedFormData.tools.join(", ")}`,
+      ...modifiedFormData.certifications.map(
+        (c) => `${c.name} - ${c.issuer} (${c.date})`,
+      ),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    navigator.clipboard.writeText(text);
+    setIsModifiedTextCopied(true);
+    setTimeout(() => setIsModifiedTextCopied(false), 2000);
+  };
+
+  const handleExportModifiedJSON = () => {
+    if (!modifiedFormData) return;
+    const exportData = {
+      ...modifiedFormData,
+      _isEasyResume: true,
+    };
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `modified_resume_${modifiedFormData.fullName.replace(/\s+/g, "_")}_${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleCopyText = () => {
     const text = [
       formData.fullName,
       formData.role,
       `${formData.email} | ${formData.phone} | ${formData.location}`,
       formData.summary,
-      ...formData.experiences.map((e) => `${e.position} at ${e.company} (${e.duration})\n${e.description.map((d) => `- ${d}`).join("\n")}`),
-      ...formData.education.map((e) => `${e.degree} at ${e.school} (${e.duration})\n${e.details}`),
+      ...formData.experiences.map(
+        (e) =>
+          `${e.position} at ${e.company} (${e.duration})\n${e.description.map((d) => `- ${d}`).join("\n")}`,
+      ),
+      ...formData.education.map(
+        (e) => `${e.degree} at ${e.school} (${e.duration})\n${e.details}`,
+      ),
       `Skills: ${formData.skills.join(", ")}`,
       `Tools: ${formData.tools.join(", ")}`,
-      ...formData.certifications.map((c) => `${c.name} - ${c.issuer} (${c.date})`)
-    ].filter(Boolean).join("\n\n");
-    
+      ...formData.certifications.map(
+        (c) => `${c.name} - ${c.issuer} (${c.date})`,
+      ),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
     navigator.clipboard.writeText(text);
     setIsTextCopied(true);
     setTimeout(() => setIsTextCopied(false), 2000);
@@ -532,13 +756,9 @@ export default function ResumePage() {
                       <button
                         key={tmpl}
                         onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            template: tmpl as
-                              | "minimal"
-                              | "modern"
-                              | "professional",
-                          }))
+                          handleTemplateChange(
+                            tmpl as "minimal" | "modern" | "professional",
+                          )
                         }
                         className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
                           formData.template === tmpl
@@ -562,10 +782,7 @@ export default function ResumePage() {
                         type="color"
                         value={formData.primaryColor}
                         onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            primaryColor: e.target.value,
-                          }))
+                          handlePrimaryColorChange(e.target.value)
                         }
                         className="w-8 h-8 rounded cursor-pointer"
                       />
@@ -583,10 +800,7 @@ export default function ResumePage() {
                         type="color"
                         value={formData.secondaryColor}
                         onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            secondaryColor: e.target.value,
-                          }))
+                          handleSecondaryColorChange(e.target.value)
                         }
                         className="w-8 h-8 rounded cursor-pointer"
                       />
@@ -898,21 +1112,109 @@ export default function ResumePage() {
               </div>
             </FormSection>
 
-            {/* Generate Resume Button */}
-            <button className="w-full py-2 px-3 rounded-[8px] text-[16px] font-normal flex items-center justify-center gap-2 transition-all bg-[#27AE60] hover:bg-[#1E8E4D] text-white">
-              Generate Resume
-            </button>
+            {/* Dashed Top Divider */}
+            <div className="my-8 border-t border-dashed border-gray-300 print:hidden" />
+
+            {/* Tailor Resume Section */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm relative overflow-hidden flex flex-col gap-5 print:hidden">
+              {/* Corner Ribbon */}
+              <div className="absolute top-0 right-0 overflow-hidden w-24 h-24 pointer-events-none z-10">
+                <div className="bg-[#27AE60] text-white text-[11px] font-bold py-1 text-center w-32 absolute top-3 -right-8 rotate-45 shadow-sm tracking-wider uppercase">
+                  New
+                </div>
+              </div>
+
+              {/* Title Header */}
+              <div className="flex items-center gap-2.5 pb-2 border-b border-gray-100">
+                <PenLine className="w-5 h-5 text-gray-800" />
+                <h3 className="text-[17px] font-bold text-gray-900 font-display tracking-tight">
+                  Tailor Resume
+                </h3>
+              </div>
+
+              {/* Job Description Textarea */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[13px] font-semibold text-gray-700">
+                  Job Description
+                </label>
+                <div className="border border-gray-200 rounded-xl p-3.5 bg-gray-50/50 focus-within:bg-white focus-within:border-emerald-500 transition-all">
+                  <textarea
+                    value={tailorJobDescription}
+                    onChange={(e) => setTailorJobDescription(e.target.value)}
+                    placeholder="Enter your Job Description & Modify your resume instantly..."
+                    className="w-full h-[140px] text-[14px] text-gray-700 focus:outline-none resize-none bg-transparent placeholder-gray-400 leading-relaxed font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Optional ATS Report Input */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[13px] font-semibold text-gray-700 flex items-center justify-between">
+                  <span>ATS Report / Suggestions</span>
+                  <span className="text-[11px] font-normal text-gray-400">
+                    (Optional)
+                  </span>
+                </label>
+                <div className="border border-gray-200 rounded-xl p-3 bg-gray-50/50 focus-within:bg-white focus-within:border-emerald-500 transition-all">
+                  <textarea
+                    value={tailorAtsReport}
+                    onChange={(e) => setTailorAtsReport(e.target.value)}
+                    placeholder="Paste ATS Score Report or key suggestions from the ATS Checker page..."
+                    className="w-full h-[80px] text-[13px] text-gray-700 focus:outline-none resize-none bg-transparent placeholder-gray-400 leading-relaxed font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Error or Success Messages */}
+              {tailorError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-[13px] rounded-lg">
+                  {tailorError}
+                </div>
+              )}
+              {tailorSuccessMessage && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-[13px] rounded-lg font-medium flex items-center gap-2">
+                  <CheckCircle2
+                    size={16}
+                    className="text-emerald-600 flex-shrink-0"
+                  />
+                  {tailorSuccessMessage}
+                </div>
+              )}
+
+              {/* Action Button */}
+              <button
+                onClick={handleTailorResume}
+                disabled={isTailoring || !tailorJobDescription.trim()}
+                className={`w-full py-3.5 px-6 rounded-xl text-[16px] font-semibold flex items-center justify-center gap-2 shadow-md transition-all ${
+                  tailorJobDescription.trim() && !isTailoring
+                    ? "bg-[#27AE60] hover:bg-[#1E8E4D] text-white shadow-emerald-200 hover:shadow-lg"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                } disabled:opacity-60`}
+              >
+                {isTailoring ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    <span>Modifying Resume...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Modify Resume</span>
+                    <Sparkles size={18} />
+                  </>
+                )}
+              </button>
+            </div>
           </motion.div>
 
-          {/* Right Section - Preview */}
+          {/* Right Section - Preview Column */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col gap-0 print:block print:w-full lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:overflow-y-scroll self-start"
+            className="flex flex-col gap-8 print:block print:w-full lg:sticky lg:top-24 lg:h-[calc(100vh-6rem)] lg:overflow-y-scroll self-start"
           >
             {/* Privacy Banner */}
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[13px] flex items-start gap-2 print:hidden">
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[13px] flex items-start gap-2 print:hidden">
               <Info size={16} className="mt-0.5 flex-shrink-0" />
               <p>
                 <strong>Privacy Note:</strong> We do not store your data. All
@@ -922,107 +1224,286 @@ export default function ResumePage() {
               </p>
             </div>
 
-            {/* Preview Header */}
-            <div className="flex items-center justify-between border-b border-[#DADAE3] pb-4 mb-4 flex-wrap gap-2 print:hidden">
-              <div className="flex items-center gap-4">
-                <div className="text-[24px] font-bold transition-all text-black">
-                  Default Resume
-                </div>
-              </div>
+            {USE_TABBED_VERSION_SWITCHER ? (
+              /* TABBED MODE */
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-[#DADAE3] pb-4 flex-wrap gap-2 print:hidden">
+                  <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+                    <button
+                      onClick={() => setActiveResumeVersion("default")}
+                      className={`px-4 py-2 rounded-lg text-[13px] font-bold transition-all ${
+                        activeResumeVersion === "default"
+                          ? "bg-white text-black shadow-sm"
+                          : "text-gray-500 hover:text-black"
+                      }`}
+                    >
+                      Default Resume
+                    </button>
+                    <button
+                      onClick={() => setActiveResumeVersion("modified")}
+                      className={`px-4 py-2 rounded-lg text-[13px] font-bold flex items-center gap-1.5 transition-all ${
+                        activeResumeVersion === "modified"
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "text-gray-500 hover:text-black"
+                      }`}
+                    >
+                      <span>Modified Resume</span>
+                      <Sparkles size={14} />
+                    </button>
+                  </div>
 
-              {/* Download Buttons */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowResetConfirm(true)}
-                  className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-all mr-2"
-                >
-                  <RotateCcw size={14} />
-                  Reset
-                </button>
-                <button
-                  onClick={handleCopyText}
-                  className={`flex items-center gap-2 px-3 py-2 border rounded text-[12px] font-medium transition-all ${
-                    isTextCopied
-                      ? "border-emerald-500 text-emerald-600 bg-emerald-50"
-                      : "border-black text-black hover:bg-gray-50"
-                  }`}
-                >
-                  {isTextCopied ? (
-                    <>
-                      <CheckCircle2 size={14} />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={
+                        activeResumeVersion === "modified"
+                          ? handleCopyModifiedText
+                          : handleCopyText
+                      }
+                      className="flex items-center gap-2 px-3 py-2 border border-black rounded text-[12px] font-medium text-black hover:bg-gray-50 transition-all"
+                    >
                       <Copy size={14} />
-                      Copy Text
-                    </>
-                  )}
-                </button>
-                <input
-                  type="file"
-                  accept="application/json"
-                  className="hidden"
-                  ref={fileInputRef}
-                  onChange={handleImportJSON}
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-3 py-2 border border-black rounded text-[12px] font-medium text-black hover:bg-[#fcfcfc] transition-all"
-                >
-                  <Upload size={14} />
-                  Import JSON
-                </button>
-                <button
-                  onClick={handleExportJSON}
-                  className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
-                >
-                  <Download size={14} />
-                  Export JSON
-                </button>
-                <button
-                  onClick={handleExportPDF}
-                  className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white rounded text-[12px] font-medium hover:bg-red-600 transition-all"
-                >
-                  <Download size={14} />
-                  Download PDF
-                </button>
-              </div>
-            </div>
-
-            {/* Content Area for Screen and Print */}
-            <div
-              className="bg-white overflow-auto print:overflow-visible"
-              id="resumePreview"
-            >
-              {formData.fullName || formData.role || formData.summary ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  {formData.template === "minimal" && (
-                    <MinimalTemplate data={formData} />
-                  )}
-                  {formData.template === "professional" && (
-                    <ProfessionalTemplate data={formData} />
-                  )}
-                  {formData.template === "modern" && (
-                    <ModernTemplate data={formData} />
-                  )}
-                </motion.div>
-              ) : (
-                <div className="text-center py-20">
-                  <FileText size={48} className="mx-auto text-[#7A7A8C] mb-4" />
-                  <h3 className="text-[16px] font-normal text-black mb-2">
-                    No resume data yet
-                  </h3>
-                  <p className="text-[16px] font-normal text-[#7A7A8C] max-w-xs mx-auto">
-                    Fill in your details on the left to see a live preview of
-                    your resume.
-                  </p>
+                      {activeResumeVersion === "modified"
+                        ? isModifiedTextCopied
+                          ? "Copied!"
+                          : "Copy Text"
+                        : isTextCopied
+                          ? "Copied!"
+                          : "Copy Text"}
+                    </button>
+                    <button
+                      onClick={
+                        activeResumeVersion === "modified"
+                          ? handleExportModifiedJSON
+                          : handleExportJSON
+                      }
+                      className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
+                    >
+                      <Download size={14} />
+                      Export JSON
+                    </button>
+                    <button
+                      onClick={handleExportPDF}
+                      className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white rounded text-[12px] font-medium hover:bg-red-600 transition-all"
+                    >
+                      <Download size={14} />
+                      Download PDF
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <div
+                  className="bg-white overflow-auto print:overflow-visible"
+                  id="resumePreview"
+                >
+                  {(() => {
+                    const displayData =
+                      activeResumeVersion === "modified" && modifiedFormData
+                        ? modifiedFormData
+                        : formData;
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        {displayData.template === "minimal" && (
+                          <MinimalTemplate data={displayData} />
+                        )}
+                        {displayData.template === "professional" && (
+                          <ProfessionalTemplate data={displayData} />
+                        )}
+                        {displayData.template === "modern" && (
+                          <ModernTemplate data={displayData} />
+                        )}
+                      </motion.div>
+                    );
+                  })()}
+                </div>
+              </div>
+            ) : (
+              /* STACKED MODE (USE_TABBED_VERSION_SWITCHER === false) */
+              <div className="flex flex-col gap-10">
+                {/* 1. DEFAULT RESUME CARD */}
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between border-b border-[#DADAE3] pb-4 flex-wrap gap-2 print:hidden">
+                    <div className="flex items-center gap-2">
+                      <div className="text-[22px] font-bold text-black font-display">
+                        Default Resume
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold uppercase">
+                        Static
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowResetConfirm(true)}
+                        className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-all mr-1"
+                      >
+                        <RotateCcw size={14} />
+                        Reset
+                      </button>
+                      <button
+                        onClick={handleCopyText}
+                        className={`flex items-center gap-2 px-3 py-2 border rounded text-[12px] font-medium transition-all ${
+                          isTextCopied
+                            ? "border-emerald-500 text-emerald-600 bg-emerald-50"
+                            : "border-black text-black hover:bg-gray-50"
+                        }`}
+                      >
+                        {isTextCopied ? (
+                          <CheckCircle2 size={14} />
+                        ) : (
+                          <Copy size={14} />
+                        )}
+                        {isTextCopied ? "Copied!" : "Copy Text"}
+                      </button>
+                      <input
+                        type="file"
+                        accept="application/json"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleImportJSON}
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 px-3 py-2 border border-black rounded text-[12px] font-medium text-black hover:bg-[#fcfcfc] transition-all"
+                      >
+                        <Upload size={14} />
+                        Import JSON
+                      </button>
+                      <button
+                        onClick={handleExportJSON}
+                        className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
+                      >
+                        <Download size={14} />
+                        Export JSON
+                      </button>
+                      <button
+                        onClick={handleExportPDF}
+                        className="flex items-center gap-2 px-3 py-2 bg-red-500 text-white rounded text-[12px] font-medium hover:bg-red-600 transition-all"
+                      >
+                        <Download size={14} />
+                        Download PDF
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    className="bg-white overflow-auto print:overflow-visible"
+                    id="resumePreview"
+                  >
+                    {formData.fullName || formData.role || formData.summary ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        {formData.template === "minimal" && (
+                          <MinimalTemplate data={formData} />
+                        )}
+                        {formData.template === "professional" && (
+                          <ProfessionalTemplate data={formData} />
+                        )}
+                        {formData.template === "modern" && (
+                          <ModernTemplate data={formData} />
+                        )}
+                      </motion.div>
+                    ) : (
+                      <div className="text-center py-20">
+                        <FileText
+                          size={48}
+                          className="mx-auto text-[#7A7A8C] mb-4"
+                        />
+                        <h3 className="text-[16px] font-normal text-black mb-2">
+                          No resume data yet
+                        </h3>
+                        <p className="text-[16px] font-normal text-[#7A7A8C] max-w-xs mx-auto">
+                          Fill in your details on the left to see a live preview
+                          of your resume.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. MODIFIED RESUME CARD (STACKED BELOW DEFAULT RESUME) */}
+                <div className="flex flex-col gap-4 border-t-2 border-emerald-500/20 pt-8 print:hidden">
+                  <div className="flex items-center justify-between border-b border-emerald-200 pb-4 flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="text-[22px] font-bold text-emerald-900 font-display flex items-center gap-2">
+                        Modified Resume
+                        <Sparkles size={18} className="text-emerald-600" />
+                      </div>
+                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase">
+                        AI Tailored
+                      </span>
+                    </div>
+
+                    {modifiedFormData && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleCopyModifiedText}
+                          className={`flex items-center gap-2 px-3 py-2 border rounded text-[12px] font-medium transition-all ${
+                            isModifiedTextCopied
+                              ? "border-emerald-500 text-emerald-600 bg-emerald-50"
+                              : "border-emerald-700 text-emerald-800 hover:bg-emerald-50"
+                          }`}
+                        >
+                          {isModifiedTextCopied ? (
+                            <CheckCircle2 size={14} />
+                          ) : (
+                            <Copy size={14} />
+                          )}
+                          {isModifiedTextCopied
+                            ? "Copied!"
+                            : "Copy Modified Text"}
+                        </button>
+                        <button
+                          onClick={handleExportModifiedJSON}
+                          className="flex items-center gap-2 px-3 py-2 bg-[#27AE60] text-white rounded text-[12px] font-medium hover:bg-[#1E8E4D] transition-all"
+                        >
+                          <Download size={14} />
+                          Export Modified JSON
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white overflow-auto">
+                    {modifiedFormData ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        {modifiedFormData.template === "minimal" && (
+                          <MinimalTemplate data={modifiedFormData} />
+                        )}
+                        {modifiedFormData.template === "professional" && (
+                          <ProfessionalTemplate data={modifiedFormData} />
+                        )}
+                        {modifiedFormData.template === "modern" && (
+                          <ModernTemplate data={modifiedFormData} />
+                        )}
+                      </motion.div>
+                    ) : (
+                      <div className="text-center py-16 bg-emerald-50/30 rounded-2xl border border-dashed border-emerald-200 p-8">
+                        <Sparkles
+                          size={40}
+                          className="mx-auto text-emerald-500 mb-3 opacity-80"
+                        />
+                        <h4 className="text-[17px] font-bold text-gray-900 mb-1 font-display">
+                          No Modified Resume Yet
+                        </h4>
+                        <p className="text-[14px] text-gray-600 max-w-sm mx-auto leading-relaxed">
+                          Enter your target Job Description on the left and
+                          click <strong>Modify Resume ✨</strong> to generate a
+                          tailored version right here.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </div>
@@ -1193,7 +1674,10 @@ function ExperienceForm({
                   <button
                     onClick={() => {
                       const newDesc = [...experience.description];
-                      [newDesc[index - 1], newDesc[index]] = [newDesc[index], newDesc[index - 1]];
+                      [newDesc[index - 1], newDesc[index]] = [
+                        newDesc[index],
+                        newDesc[index - 1],
+                      ];
                       onUpdate("description", newDesc);
                     }}
                     disabled={index === 0}
@@ -1204,7 +1688,10 @@ function ExperienceForm({
                   <button
                     onClick={() => {
                       const newDesc = [...experience.description];
-                      [newDesc[index], newDesc[index + 1]] = [newDesc[index + 1], newDesc[index]];
+                      [newDesc[index], newDesc[index + 1]] = [
+                        newDesc[index + 1],
+                        newDesc[index],
+                      ];
                       onUpdate("description", newDesc);
                     }}
                     disabled={index === experience.description.length - 1}
@@ -1814,9 +2301,12 @@ function ModernTemplate({ data }: { data: FormData }) {
         className="hidden print:block fixed inset-y-0 left-0 w-1/3 -z-10"
         style={{ backgroundColor: data.primaryColor }}
       />
-      
+
       {/* Sidebar */}
-      <div className="w-1/3 p-5 text-white print:pb-0 relative z-10 modern-sidebar-print" style={{ backgroundColor: data.primaryColor }}>
+      <div
+        className="w-1/3 p-5 text-white print:pb-0 relative z-10 modern-sidebar-print"
+        style={{ backgroundColor: data.primaryColor }}
+      >
         {data.photo && (
           <img
             src={data.photo}
@@ -1861,7 +2351,10 @@ function ModernTemplate({ data }: { data: FormData }) {
                   .replace(/^https?:\/\/(www\.)?/, "")
                   .replace(/\/$/, "");
                 return (
-                  <div key={idx} className="flex flex-col min-w-0 leading-tight mb-2.5 last:mb-0">
+                  <div
+                    key={idx}
+                    className="flex flex-col min-w-0 leading-tight mb-2.5 last:mb-0"
+                  >
                     {link.label && (
                       <span className="text-[11px] font-semibold text-white">
                         {link.label}
@@ -1950,7 +2443,9 @@ function ModernTemplate({ data }: { data: FormData }) {
                     >
                       {exp.company}
                     </div>
-                    <div className="text-[11px] text-gray-500">{exp.duration}</div>
+                    <div className="text-[11px] text-gray-500">
+                      {exp.duration}
+                    </div>
                   </div>
                   <ul className="list-disc list-outside ml-4 text-[13px] text-gray-700 leading-relaxed space-y-1">
                     {exp.description
@@ -1986,7 +2481,9 @@ function ModernTemplate({ data }: { data: FormData }) {
                     >
                       {edu.school}
                     </div>
-                    <div className="text-[11px] text-gray-500">{edu.duration}</div>
+                    <div className="text-[11px] text-gray-500">
+                      {edu.duration}
+                    </div>
                   </div>
                   <div className="text-[13px] text-gray-700">{edu.details}</div>
                 </div>

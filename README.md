@@ -4,7 +4,7 @@
 
 # EasyResume AI
 
-> **Premium ATS Resume Builder Dashboard** — Create, optimize, and track job-application resumes with AI-powered insights. Built with React 19, TypeScript, Vite, TailwindCSS v4, Gemini AI, and OpenRouter.
+> **Premium ATS Resume Builder Dashboard** — Create, optimize, tailor, and track job-application resumes with AI-powered insights. Built with React 19, TypeScript, Vite, TailwindCSS v4, and OpenRouter AI.
 
 ---
 
@@ -17,12 +17,10 @@
 - [Project Structure](#project-structure)
 - [Data Models & Types](#data-models--types)
 - [State Management](#state-management)
-- [AI Integrations](#ai-integrations)
+- [AI Integrations & Logging](#ai-integrations--logging)
 - [Routing & Pages](#routing--pages)
 - [Component Inventory](#component-inventory)
 - [Styling & Design System](#styling--design-system)
-- [Authentication](#authentication)
-- [Local Database (Dexie / IndexedDB)](#local-database-dexie--indexeddb)
 - [Environment Variables](#environment-variables)
 - [Getting Started](#getting-started)
 - [Available Scripts](#available-scripts)
@@ -36,12 +34,12 @@
 
 **EasyResume AI** is a full-featured, client-side resume management platform that helps job seekers:
 
-1. **Build** professional resumes with a real-time, live-preview editor.
-2. **Check** ATS (Applicant Tracking System) compatibility scores against specific job descriptions.
-3. **Modify** existing resumes to better match target roles (UI Implemented).
-4. **Generate** personalized cover letters from structured inputs (UI Implemented).
+1. **Build** professional resumes with a real-time, live-preview editor and multiple template choices.
+2. **Tailor & Modify** existing resumes using AI to match target Job Descriptions without altering original data.
+3. **Check** ATS (Applicant Tracking System) compatibility scores against specific job descriptions.
+4. **Generate** tailored cover letters powered by free OpenRouter AI models.
 
-The entire application runs in the browser. Resume data is stored locally in localStorage, and AI analysis calls are made directly from the client to Gemini and OpenRouter APIs.
+The entire application runs in the browser. Resume data is stored locally in `localStorage`, and AI requests are made directly via client calls to OpenRouter free models with automatic failover.
 
 ---
 
@@ -49,56 +47,44 @@ The entire application runs in the browser. Resume data is stored locally in loc
 
 ### 1. Landing Page (`/`)
 - Animated hero section with Framer Motion entrance transitions.
-- Skeleton resume card visual previews (left, center, right with rotation effects).
+- Skeleton resume card visual previews.
 
-
-
-### 3. Resume Builder (`/resume-builder`)
-- **Form-based editor** with sections for:
-  - Template selection (Minimal, Modern, Professional) with primary/secondary color pickers.
-  - Profile photo upload (base64, stored in localStorage).
+### 2. Resume Builder (`/resume-builder`)
+- **Form-based editor**:
+  - Template selection (`Minimal`, `Modern`, `Professional`) with primary and secondary color pickers.
+  - Profile photo upload (base64, stored in `localStorage`).
   - Personal information (name, role, email, phone, location, years of experience, summary).
   - LinkedIn & Portfolio links.
-  - Work experience entries (multiple, each with bullet-point descriptions).
+  - Work experience entries (multiple, each with bullet-point descriptions and re-ordering controls).
   - Education entries (degree, school, duration, details).
-  - Skills list.
-- **Live Preview** — Right-side real-time preview that updates as you type.
-- **Three Resume Templates**:
-  - `MinimalTemplate` — Clean, single-column layout.
-  - `ModernTemplate` — Two-column layout with a colored sidebar.
-  - `ProfessionalTemplate` — A classic, professional format tailored for corporate roles.
+  - Skills & Tools lists.
+  - Certifications list.
+- **Tailor Resume (AI Resume Modifier)**:
+  - Input section for target **Job Description** and optional **ATS Score Report / Suggestions**.
+  - Powered by OpenRouter AI multi-model fallback (`nvidia/nemotron-3.5-lightning:free` → `thinkingmachines/inkling-small:free` → `meta-llama/llama-3.3-70b-instruct:free` → `openrouter/free`).
+  - Creates a separate **Modified Resume** entity in `localStorage` (`easyresume_modified_data`) while keeping the **Default Resume** static in `easyresume_data`.
+  - Automatically synchronizes template styles, primary/secondary colors, and profile photo edits across both Default and Modified resumes in real time.
+  - Configurable layout via `USE_TABBED_VERSION_SWITCHER` feature flag (defaults to stacked vertical previews for side-by-side comparison).
+- **Dual Resume Live Previews**:
+  - **Default Resume** preview with static badge, Reset, Copy Text, Import JSON, Export JSON, and Download PDF tools.
+  - **Modified Resume** preview stacked below with **`AI Tailored`** badge, **`Copy Modified Text`**, and **`Export Modified JSON`** tools.
 - **Export Options**:
   - **Download PDF** — Uses `window.print()` with print-optimized CSS (`@media print`).
-  - **Download JSON** — Exports the complete resume data as a `.json` file (stamped with `_isEasyResume: true` for validation).
-  - **Import JSON** — Re-imports a previously exported JSON file.
-  - **Copy Text** — State-aware copy to clipboard feature that extracts plain text.
-- **Reset** — Clears all data and reverts to the default template (with confirmation dialog).
-- **Persistence** — All form data auto-saves to `localStorage` under the key `easyresume_data`.
+  - **Download JSON** — Exports resume data as `.json` (stamped with `_isEasyResume: true`).
+  - **Import JSON** — Re-imports previously exported JSON files.
+  - **Copy Text** — Plain-text formatting clipboard copy.
 
-### 4. ATS Score Checker (`/ats-checker`)
-- Two input areas: resume text and job description.
-- **File upload support** — Accepts `.txt`, `.pdf`, and `.docx` files; extracts text automatically.
-- **Three-tier AI fallback strategy**:
-  1. **Gemini AI** (primary if configured) — Structured ATS analysis with score, suggestions, and improvements (using `gemini-1.5-flash`).
-  2. **OpenRouter** (secondary/primary free models) — High-quality analysis with sequential model fallback (`nvidia/nemotron-3.5-lightning:free` → `thinkingmachines/inkling-small:free` → `openrouter/free`).
-  3. **Manual keyword scoring** (fallback) — Local keyword-overlap algorithm when AI providers fail or are unconfigured.
-- **Results display**: Color-coded score card (green ≥80%, amber ≥50%, red <50%), executive summary, strengths, missing keywords as tags, actionable suggestions, and improvements.
-- **Export results**: State-aware copy to clipboard.
-- **Loading overlay** with animated step-through messages.
+### 3. ATS Score Checker (`/ats-checker`)
+- Dual inputs: candidate resume text and target job description.
+- **File upload support** — Accepts `.txt`, `.pdf`, and `.docx` files with automated text extraction.
+- **OpenRouter AI analysis**:
+  - Returns complete `ATSAnalysisResult` (Overall Score 0-100, Score Label e.g. "Weak Match"/"Strong Match", Executive Summary, 7 category breakdown bars, Matched Skills tags, Missing Skills with severity, and numbered Recommendations).
+  - Multi-model fallback sequence to guarantee uptime on free tiers.
+- **Export results**: Copy analysis summary to clipboard.
 
-### 5. Modify Resume (`/modify-resume`)
-- Complete UI for inputting current resume, target role, and job description.
-- Generates a tailored version of the resume.
-- Features real-time loader state and file download capabilities.
-- *Note: Currently uses placeholder simulation logic (marked `TODO` for full AI integration).*
-
-### 6. Cover Letter Generator (`/cover-letter`)
-- Comprehensive structured input form:
-  - User info (name, email, phone, location).
-  - Job details (role, company, hiring manager) — supports adding/removing multiple entries dynamically.
-  - Complete job description text area.
-- Dedicated output UI with state-aware copy to clipboard feature.
-- *Note: Currently uses placeholder simulation logic (marked `TODO` for full AI integration).*
+### 4. Cover Letter Generator (`/cover-letter`)
+- Input form for candidate profile, target job title, company name, hiring manager, and job description.
+- Direct OpenRouter AI cover letter generation with live output display and clipboard copy.
 
 ---
 
@@ -108,37 +94,26 @@ The entire application runs in the browser. Resume data is stored locally in loc
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Browser (Client)                        │
 │                                                                 │
-│  ┌──────────┐  ┌───────────────┐  ┌──────────────────────────┐  │
-│  │  React   │  │  Zustand      │  │  Dexie.js (IndexedDB)    │  │
-│  │  Router  │──│  Store        │──│  "EasyResumeDB"          │  │
-│  │  (SPA)   │  │  (projects)   │  │  └─ projects table       │  │
-│  └──────────┘  └───────────────┘  └──────────────────────────┘  │
+│  ┌──────────┐  ┌─────────────────────────────────────────────┐  │
+│  │  React   │  │  localStorage                               │  │
+│  │  Router  │  │  ├─ "easyresume_data"          (Default)    │  │
+│  │  (SPA)   │  │  └─ "easyresume_modified_data" (Modified)   │  │
+│  └──────────┘  └─────────────────────────────────────────────┘  │
 │       │                                                         │
 │  ┌────┴────────────────────────────────────────┐                │
 │  │              Page Components                │                │
-│  │  Landing │ Dashboard │ Resume │ ATS │ ...   │                │
+│  │  Landing │ Resume Builder │ ATS │ Cover Letter               │
 │  └──────────────────────────────────────────────┘               │
-│       │                         │                               │
-│  ┌────┴──────┐           ┌──────┴──────────────┐                │
-│  │ Firebase  │           │   AI Providers      │                │
-│  │ Auth +    │           │  ┌─ Gemini API      │                │
-│  │ Analytics │           │  └─ OpenRouter API  │                │
-│  └───────────┘           └─────────────────────┘                │
-│                                                                 │
-│  ┌──────────────────────────────────────────────┐               │
-│  │  localStorage: "easyresume_data" (Resume)    │               │
+│       │                                                         │
+│  ┌────┴────────────────────────────────────────┐                │
+│  │         OpenRouter Multi-Model Engine       │                │
+│  │  1. nvidia/nemotron-3.5-lightning:free      │                │
+│  │  2. thinkingmachines/inkling-small:free     │                │
+│  │  3. meta-llama/llama-3.3-70b-instruct:free  │                │
+│  │  4. openrouter/free                         │                │
 │  └──────────────────────────────────────────────┘               │
 └─────────────────────────────────────────────────────────────────┘
 ```
-
-### Key Architectural Decisions
-
-| Decision | Rationale |
-|---|---|
-| **Client-side only** (no backend server) | Zero hosting cost, instant startup, full data privacy — all data stays in the user's browser. |
-| **localStorage** for resume builder data | Simpler persistence for a single-document workflow (the active resume form). |
-| **Dual AI providers** (Gemini + OpenRouter) | Redundancy — if one fails, the other provides results. Manual keyword scoring as final fallback. |
-| **TailwindCSS v4** | Utility-first CSS with new `@theme` directive for design tokens. |
 
 ---
 
@@ -153,8 +128,7 @@ The entire application runs in the browser. Resume data is stored locally in loc
 | **Routing** | React Router DOM | 7.x |
 | **Animations** | Framer Motion & Motion | 12.x |
 | **Icons** | Lucide React | 0.546.x |
-| **AI — Primary** | Google Generative AI (`@google/genai`) | 1.52.x |
-| **AI — Secondary** | OpenRouter API (REST) | — |
+| **AI Engine** | OpenRouter REST API (Free Models) | — |
 | **File Parsing** | pdf.js (`pdfjs-dist`) + Mammoth.js | 5.x / 1.x |
 | **Date Formatting** | date-fns | 4.x |
 | **CSS Utilities** | clsx + tailwind-merge | 2.x / 3.x |
@@ -166,230 +140,94 @@ The entire application runs in the browser. Resume data is stored locally in loc
 ```
 easyresume-ai-codex/
 ├── index.html                    # HTML entry point
-├── vite.config.ts                # Vite config (React, TailwindCSS, env injection, path aliases)
-├── tsconfig.json                 # TypeScript config (ES2022, bundler resolution)
+├── vite.config.ts                # Vite config (React, TailwindCSS, env injection via define)
+├── tsconfig.json                 # TypeScript config
 ├── package.json                  # Dependencies & scripts
-├── metadata.json                 # AI Studio app metadata
+├── README.md                     # Documentation
 ├── .env.example                  # Environment variable template
-├── .gitignore
-│
-├── public/
-│   └── assets/
-│       ├── logos/                 # App logos (SVG) — navbar & footer variants
-│       ├── icons/                # UI icons
-│       ├── illustrations/        # Decorative illustrations
-│       └── images/               # Static images
 │
 └── src/
-    ├── main.tsx                  # React DOM entry — mounts <App /> into #root
-    ├── App.tsx                   # Root component — Router, Navbar, Routes, Footer
-    ├── index.css                 # Global styles, TailwindCSS imports, @theme tokens, utility classes
-    ├── vite-env.d.ts             # Vite + Firebase env type declarations
+    ├── main.tsx                  # React DOM entry
+    ├── App.tsx                   # Root router & page layout
+    ├── index.css                 # Global CSS & TailwindCSS v4 tokens
+    ├── vite-env.d.ts             # Vite env type declarations
     │
     ├── pages/                    # Route-level page components
-    │   ├── LandingPage.tsx       # Hero + animated resume skeletons
-    │   ├── ResumePage.tsx        # Full resume builder with live preview & templates
-    │   ├── ATSCheckerPage.tsx    # ATS score checker with AI analysis
-    │   ├── ModifyResumePage.tsx  # Interactive UI for AI resume tailoring
-    │   ├── CoverLetterPage.tsx   # Interactive UI for AI cover letter generation
-    │   └── PlaceholderPage.tsx   # Generic placeholder for future pages
+    │   ├── LandingPage.tsx       # Landing page & hero section
+    │   ├── ResumePage.tsx        # Resume builder with dual preview & AI tailoring
+    │   ├── ATSCheckerPage.tsx    # ATS score checker & analysis
+    │   └── CoverLetterPage.tsx   # Cover letter generator
     │
+    ├── lib/                      # Core AI services & prompts
+    │   ├── openrouter.ts         # OpenRouter API engine with model fallback & logging
+    │   ├── ats-prompt.ts         # ATS prompt template specification
+    │   ├── tailor-prompt.ts      # Resume tailoring prompt specification
+    │   └── utils.ts              # cn() utility
     │
-    ├── components/               # Domain-specific components
-    ├── shared/                   # Cross-cutting shared code
-    │   ├── components/
-    │   │   ├── navbar.tsx        # Sticky top navbar with mobile menu, auth-aware
-    │   │   └── footer.tsx        # Site footer with social links
-    │   └── constants/
-    │       └── navigation.ts     # NAV_LINKS and SOCIAL_LINKS arrays
-    │
-    ├── lib/
-    │   ├── gemini.ts             # Gemini AI ATS analysis function
-    │   ├── openrouter.ts         # OpenRouter AI ATS analysis function
-    │   └── utils.ts              # cn() utility (clsx + tailwind-merge)
-    │
-    ├── utils/
-    │   ├── file-parser.ts        # Extract text from PDF, DOCX, TXT files
-    │   ├── keyword-extractor.ts  # ATS keyword extraction & scoring algorithm
-    │
-    └── reference/                # Design reference assets (not used at runtime)
-```
-
----
-
-## Data Models & Types
-
-### Resume Builder `FormData` (local to ResumePage)
-
-The resume builder uses a comprehensive form data schema stored in `localStorage`:
-
-```typescript
-interface FormData {
-  template: "minimal" | "modern" | "professional";
-  primaryColor: string;
-  secondaryColor: string;
-  photo?: string;           // base64 data URL
-  fullName: string;
-  role: string;
-  email: string;
-  phone: string;
-  location: string;
-  experience: number;       // years of experience
-  summary: string;
-  linksPortfolio: { label: string; url: string }[];
-  experiences: {
-    id: string;
-    position: string;
-    company: string;
-    duration: string;
-    description: string[];  // bullet points
-  }[];
-  education: {
-    id: string;
-    degree: string;
-    school: string;
-    duration: string;
-    details: string;
-  }[];
-  skills: string[];
-}
+    └── utils/
+        ├── file-parser.ts        # Extract text from PDF, DOCX, TXT files
+        └── keyword-extractor.ts  # Fallback ATS keyword scoring
 ```
 
 ---
 
 ## State Management
 
-### localStorage Persistence
+### localStorage Keys
 
-The **Resume Builder** (`ResumePage`) manages its own form state locally:
-
-- **Key:** `easyresume_data`
-- **Write:** On every `formData` state change via `useEffect`.
-- **Read:** On component mount as the initial state for `useState`.
-- **Reset:** Removes the key and resets to `initialFormData`.
+- **`easyresume_data`**: Stores the static **Default Resume** object (`formData`).
+- **`easyresume_modified_data`**: Stores the AI-tailored **Modified Resume** object (`modifiedFormData`).
+- Form updates for templates, primary/secondary colors, and profile photo synchronize to both objects simultaneously.
 
 ---
 
-## AI Integrations
+## AI Integrations & Logging
 
-### 1. Gemini AI (`src/lib/gemini.ts`)
+### OpenRouter Multi-Model Fallback Engine (`src/lib/openrouter.ts`)
 
-| Property | Value |
-|---|---|
-| **SDK** | `@google/genai` |
-| **Model** | `gemini-1.5-flash` |
-| **API Key** | `process.env.GEMINI_API_KEY` (injected by Vite `define`) |
-| **Function** | `analyzeATS(resume, jobDescription)` |
-| **Returns** | `{ score: number, suggestions: string[], improvements: string[] }` |
-| **Usage** | Primary ATS analysis in `ATSCheckerPage` |
+- **Primary Models**:
+  1. `nvidia/nemotron-3.5-lightning:free`
+  2. `thinkingmachines/inkling-small:free`
+  3. `meta-llama/llama-3.3-70b-instruct:free`
+  4. `openrouter/free`
+- **Timeout Protection**: Per-model 30s `AbortController` timeout prevents stalled model requests from blocking the fallback chain.
+- **Exported Functions**:
+  - `getDynamicSuggestionsFromOpenRouter(resume, jobDescription, signal?)`
+  - `modifyResumeWithOpenRouter(formData, jobDescription, atsReport, signal?)`
+  - `generateCoverLetterFromOpenRouter(prompt, signal?)`
 
-### 2. OpenRouter (`src/lib/openrouter.ts`)
-
-| Property | Value |
-|---|---|
-| **Endpoint** | `https://openrouter.ai/api/v1/chat/completions` |
-| **Models** | `nvidia/nemotron-3.5-lightning:free` (Primary), `thinkingmachines/inkling-small:free` (Fallback), `openrouter/free` |
-| **API Key** | `process.env.OPENROUTER_API_KEY` or `import.meta.env.VITE_OPENROUTER_API_KEY` |
-| **Function** | `getDynamicSuggestionsFromOpenRouter(resume, jobDescription, signal?)` |
-| **Returns** | Structured `ATSAnalysisResult` (score, scoreLabel, summary, breakdown, matchedSkills, missingSkills, gaps, recommendations) |
-| **Features** | Model fallback sequence + AbortController timeout (configurable via `VITE_OPENROUTER_TIMEOUT_SECONDS`, default 60s) |
-| **Usage** | ATS analysis when Gemini is unconfigured or fails |
-
-### 3. Manual Keyword Scoring (`src/utils/keyword-extractor.ts`)
-
-A fully local, zero-API fallback:
-
-- **`extractKeywords(text)`** — Normalizes text, replaces tech phrase variations (e.g., "front end" → "frontend"), filters stopwords, returns unique keywords.
-- **`calculateATSScore(resume, jobDescription)`** — Computes `score` as `(matched / total job keywords) × 100`, returns `{ score, matched[], missing[] }`.
+### Console Logging (`[EasyResume AI]`)
+All key AI calls, fallback attempts, and template style updates output formatted console logs tagged with `[EasyResume AI]`. Logs remain active in both local development and Vercel production builds.
 
 ---
 
 ## Routing & Pages
 
-**Router:** React Router DOM v7 (`BrowserRouter`)
-
 | Path | Component | Description |
 |---|---|---|
-| `/` | `LandingPage` | Hero section with animated resume previews |
-| `/resume-builder` | `ResumePage` | Protected form editor with live preview |
-| `/ats-checker` | `ATSCheckerPage` | AI-powered ATS analysis |
-| `/modify-resume` | `ModifyResumePage` | UI for AI resume tailoring |
-| `/cover-letter` | `CoverLetterPage` | UI for AI cover letter generation |
+| `/` | `LandingPage` | Animated hero section |
+| `/resume-builder` | `ResumePage` | Resume builder, live preview, and AI Tailor Resume section |
+| `/ats-checker` | `ATSCheckerPage` | ATS compatibility checker & analysis breakdown |
+| `/cover-letter` | `CoverLetterPage` | AI cover letter generator |
 
 ---
-
-## Component Inventory
-
-### Layout Components (shared)
-
-| Component | File | Description |
-|---|---|---|
-| `Navbar` | `src/shared/components/navbar.tsx` | Sticky top navbar, desktop nav links, mobile hamburger, auth-aware (Sign In / Dashboard), Donate button. |
-| `Footer` | `src/shared/components/footer.tsx` | Branding, social links (GitHub, LinkedIn, Mail, X), copyright. |
-
-### Resume Builder Internal Components (inside `ResumePage.tsx`)
-
-| Component | Description |
-|---|---|
-| `FormSection` | Collapsible form section wrapper with icon and title. |
-| `FormInput` | Reusable labeled input field. |
-| `ExperienceForm` | Multi-field form for a single work experience entry with bullet-point editing. |
-| `EducationForm` | Multi-field form for a single education entry. |
-| `MinimalTemplate` | Resume preview — single-column, clean design. |
-| `ModernTemplate` | Resume preview — two-column layout with colored sidebar. |
-| `ProfessionalTemplate` | Resume preview — classic structured layout for corporate roles. |
-
----
-
-## Styling & Design System
-
-### CSS Framework
-
-**TailwindCSS v4** with the `@tailwindcss/vite` plugin. Configured in `vite.config.ts` and imported in `src/index.css`.
-
-### Design Tokens (`@theme`)
-
-```css
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
-  --color-brand-primary: #000000;
-  --color-brand-success: #27AE60;
-  --color-brand-secondary: #7A7A8C;
-  --color-surface-bg: #fcfcfc;
-  --color-surface-accent: #FFFFFF;
-  --color-border-subtle: #f1f1f1;
-}
-```
-
-### Fonts
-
-- **Inter** (400, 500, 600, 700) — Body text, UI labels.
-- **Bricolage Grotesque** (600, 700, 800) — Headings, display text.
-
----
-
-
 
 ## Environment Variables
-
-### Required Variables
 
 Create a `.env` file based on `.env.example`:
 
 ```env
-# Gemini AI (injected via Vite `define`)
-GEMINI_API_KEY="your-gemini-api-key"
-
-# OpenRouter (accessed via import.meta.env)
+# OpenRouter API Key
 VITE_OPENROUTER_API_KEY="your-openrouter-api-key"
 
 # Optional: OpenRouter timeout in seconds (default: 60)
 VITE_OPENROUTER_TIMEOUT_SECONDS=60
 
-# App URL (AI Studio injects automatically)
-APP_URL="http://localhost:3000"
+# Local Development Flag
+DEV=true
 ```
+
+> **Vercel Deployment Note**: `vite.config.ts` includes static injection under `define` (`process.env.OPENROUTER_API_KEY` and `process.env.VITE_OPENROUTER_API_KEY`) so environment variables configured in Vercel settings are baked into client builds automatically.
 
 ---
 
@@ -398,10 +236,9 @@ APP_URL="http://localhost:3000"
 ### Prerequisites
 
 - **Node.js** ≥ 18
-- A **Gemini API key** (from [Google AI Studio](https://aistudio.google.com/))
-- *(Optional)* An **OpenRouter API key** (from [openrouter.ai](https://openrouter.ai/))
+- An **OpenRouter API key** (from [openrouter.ai](https://openrouter.ai/))
 
-### Installation
+### Installation & Execution
 
 ```bash
 # 1. Clone the repository
@@ -413,13 +250,13 @@ npm install
 
 # 3. Configure environment variables
 cp .env.example .env
-# Edit .env with your API keys
+# Add your VITE_OPENROUTER_API_KEY to .env
 
 # 4. Start the development server
 npm run dev
 ```
 
-The app will be available at **http://localhost:3000**.
+App runs locally at **http://localhost:3000**.
 
 ---
 
@@ -427,48 +264,11 @@ The app will be available at **http://localhost:3000**.
 
 | Script | Command | Description |
 |---|---|---|
-| **dev** | `npm run dev` | Start Vite dev server on port 3000, bound to `0.0.0.0` |
-| **build** | `npm run build` | Create production bundle in `dist/` |
-| **preview** | `npm run preview` | Preview the production build locally |
-| **clean** | `npm run clean` | Remove the `dist/` directory |
-| **lint** | `npm run lint` | Type-check with `tsc --noEmit` (no output files) |
-
----
-
-## Export & Import Flows
-
-### Resume Builder — JSON
-
-- **Export:** `handleExportJSON()` serializes `formData` with a `_isEasyResume: true` marker and triggers a `.json` file download.
-- **Import:** `handleImportJSON()` reads a `.json` file, validates the `_isEasyResume` marker, normalizes experience description arrays, and loads data into state.
-- **File naming:** `resume_{FullName}_{YYYY-MM-DD}.json`
-
-### Resume Builder — PDF
-
-- Uses `window.print()` with a comprehensive `@media print` stylesheet.
-- The form panel is hidden via `print:hidden`, and only the preview renders.
-- Color-adjust properties ensure backgrounds/colors print correctly.
-
-### ATS Checker — File Upload & Export
-
-- Supports `.txt`, `.pdf`, and `.docx` files.
-- **PDF parsing:** Uses `pdfjs-dist` with a CDN-hosted worker.
-- **DOCX parsing:** Uses `mammoth.js`.
-- **Export:** Copy to clipboard or download as a `.txt` file.
-
----
-
-## Deployment
-
-### Manual Deployment
-
-```bash
-# Build the production bundle
-npm run build
-
-# The output is in dist/ — deploy to any static hosting:
-# - Vercel, Netlify, Firebase Hosting, Cloudflare Pages, etc.
-```
+| **dev** | `npm run dev` | Start Vite dev server on port 3000 |
+| **build** | `npm run build` | Build production bundle in `dist/` |
+| **preview** | `npm run preview` | Preview production build locally |
+| **clean** | `npm run clean` | Remove `dist/` build directory |
+| **lint** | `npm run lint` | Type-check with `tsc --noEmit` |
 
 ---
 
