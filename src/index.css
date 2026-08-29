@@ -54,30 +54,74 @@
 @media print {
   @page {
     margin: 0;
-    size: A4;
+    size: A4 portrait;
   }
 
-  body * {
-    visibility: hidden;
-  }
-
-  #resumePreview,
-  #resumePreview * {
-    visibility: visible;
-  }
-
-  #resumePreview {
-    position: absolute;
-    left: 0;
-    top: 0;
-    transform: none !important;
-    width: 100% !important;
-  }
-
-  /* Force colors to print */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     color-adjust: exact !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /*
+   * JS adds class "printing" to body and moves #resumePreview to body root.
+   * Hide every other direct child of body with display:none so they take
+   * NO space (unlike visibility:hidden which caused a blank first page).
+   */
+  body.printing > *:not(#resumePreview) {
+    display: none !important;
+  }
+
+  body.printing > #resumePreview {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    overflow: visible !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Template-specific print resets */
+  .template-minimal,
+  .template-professional {
+    padding: 3rem !important;
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: auto !important;
+  }
+
+  .template-modern {
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: auto !important;
+    background: transparent !important;
+    position: relative !important;
+  }
+
+  .template-modern::before {
+    content: "" !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    height: 100% !important;
+    width: 33.33% !important;
+    background-color: var(--sidebar-color) !important;
+    z-index: -1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

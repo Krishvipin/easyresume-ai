@@ -548,7 +548,35 @@ export default function ResumePage() {
   };
 
   const handleExportPDF = () => {
+    const preview = document.getElementById("resumePreview");
+    if (!preview) return;
+
+    const originalTitle = document.title;
+    document.title = "";
+
+    // Remember where the preview lives in the DOM
+    const originalParent = preview.parentElement;
+    const originalNextSibling = preview.nextElementSibling;
+
+    // Move preview to body root and add "printing" class
+    // CSS uses body.printing > *:not(#resumePreview) { display: none }
+    // so hidden elements take ZERO space (no blank first page)
+    document.body.classList.add("printing");
+    document.body.appendChild(preview);
+
+    // Print — this blocks until the print dialog is dismissed
     window.print();
+
+    // Restore everything
+    document.body.classList.remove("printing");
+    if (originalParent) {
+      if (originalNextSibling) {
+        originalParent.insertBefore(preview, originalNextSibling);
+      } else {
+        originalParent.appendChild(preview);
+      }
+    }
+    document.title = originalTitle;
   };
 
   const handleReset = () => {
@@ -1180,7 +1208,7 @@ export default function ResumePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col gap-8 print:block print:w-full lg:sticky lg:top-24 self-start"
+            className="flex flex-col gap-8 print:block print:w-full print:static print:overflow-visible print:self-auto lg:sticky lg:top-24 self-start"
           >
             {/* Privacy Banner */}
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-[13px] flex items-start gap-2 print:hidden">
@@ -1257,7 +1285,7 @@ export default function ResumePage() {
               </div>
 
               <div
-                className="bg-white overflow-x-auto print:overflow-visible"
+                className="bg-white overflow-x-auto print:overflow-visible print:h-auto"
                 id="resumePreview"
               >
                 {formData.fullName || formData.role || formData.summary ? (
@@ -1857,7 +1885,7 @@ function MinimalTemplate({ data }: { data: FormData }) {
   const links = data.linksPortfolio.filter((l) => l.url).map((l) => l.url);
   return (
     <div
-      className="p-8 space-y-6 bg-white w-full max-w-[210mm] print:max-w-none print:w-full mx-auto border border-gray-200 print:border-none print:shadow-none"
+      className="template-minimal p-8 space-y-6 bg-white w-full max-w-[210mm] print:max-w-none print:w-full mx-auto border border-gray-200 print:border-none print:shadow-none"
       style={{ minHeight: "297mm" }}
     >
       <div className="flex items-start gap-6 mb-6">
@@ -2056,7 +2084,7 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
   const links = data.linksPortfolio.filter((l) => l.url).map((l) => l.url);
   return (
     <div
-      className="p-8 bg-white w-[210mm] max-w-full print:max-w-none print:w-full mx-auto border border-gray-200 print:border-none print:shadow-none"
+      className="template-professional p-8 bg-white w-[210mm] max-w-full print:max-w-none print:w-full mx-auto border border-gray-200 print:border-none print:shadow-none"
       style={{ minHeight: "297mm" }}
     >
       <div
@@ -2278,20 +2306,15 @@ function ProfessionalTemplate({ data }: { data: FormData }) {
 function ModernTemplate({ data }: { data: FormData }) {
   return (
     <div
-      className="flex bg-white w-full max-w-[210mm] print:max-w-none print:w-full print:mx-0 mx-auto border border-gray-200 print:border-none print:shadow-none relative"
+      className="template-modern flex bg-white w-full max-w-[210mm] print:max-w-none print:w-full print:mx-0 mx-auto border border-gray-200 print:border-none print:shadow-none relative"
       style={{
         minHeight: "297mm",
-      }}
+        "--sidebar-color": data.primaryColor,
+      } as React.CSSProperties}
     >
-      {/* Print Background Fix for Multi-page: Covers entire height of every printed page */}
-      <div
-        className="hidden print:block fixed inset-y-0 left-0 w-1/3 -z-10"
-        style={{ backgroundColor: data.primaryColor }}
-      />
-
       {/* Sidebar */}
       <div
-        className="w-1/3 p-5 text-white print:pb-0 relative z-10 modern-sidebar-print"
+        className="modern-sidebar w-1/3 p-5 text-white shrink-0"
         style={{ backgroundColor: data.primaryColor }}
       >
         {data.photo && (
