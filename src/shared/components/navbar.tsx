@@ -61,7 +61,7 @@ export const Navbar = () => {
               }}
               className="hover:opacity-90 active:scale-95 shadow-sm"
             >
-              Donate
+              Donate 🤍
             </button>
           </div>
 

@@ -25,9 +25,9 @@ export const getDynamicSuggestionsFromOpenRouter = async (
   const prompt = generateATSPrompt(resume, jobDescription);
 
   const modelsToTry = [
-    "nvidia/nemotron-3.5-lightning:free",
-    "thinkingmachines/inkling-small:free",
     "meta-llama/llama-3.3-70b-instruct:free",
+    "thinkingmachines/inkling-small:free",
+    "nvidia/nemotron-3.5-lightning:free",
     "openrouter/free",
   ];
 
@@ -42,7 +42,7 @@ export const getDynamicSuggestionsFromOpenRouter = async (
 
     logDev(`[OpenRouter] Trying model '${model}'...`);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s limit per model attempt
+    const timeoutId = setTimeout(() => controller.abort(), 18000); // 18s limit per model attempt for fast fallback
 
     const handleParentAbort = () => controller.abort();
     if (parentSignal) {
@@ -66,6 +66,8 @@ export const getDynamicSuggestionsFromOpenRouter = async (
           body: JSON.stringify({
             model,
             messages: [{ role: "user", content: prompt }],
+            temperature: 0.2,
+            max_tokens: 1500,
           }),
           signal: controller.signal,
         },
@@ -130,10 +132,11 @@ export const getDynamicSuggestionsFromOpenRouter = async (
 
 export const generateCoverLetterFromOpenRouter = async (
   prompt: string,
-  signal?: AbortSignal,
+  parentSignal?: AbortSignal,
 ): Promise<string> => {
   const apiKey =
     (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
+    (typeof process !== "undefined" && process.env?.VITE_OPENROUTER_API_KEY) ||
     (import.meta.env && import.meta.env.VITE_OPENROUTER_API_KEY) ||
     "";
 
@@ -141,46 +144,91 @@ export const generateCoverLetterFromOpenRouter = async (
     throw new Error("OpenRouter API key is not configured");
   }
 
-  const response = await fetch(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer":
-          typeof window !== "undefined"
-            ? window.location.origin
-            : "http://localhost:3000",
-        "X-Title": "EasyResume AI",
-      },
-      body: JSON.stringify({
-        model: "openrouter/free",
-        messages: [{ role: "user", content: prompt }],
-      }),
-      signal,
-    },
-  );
+  const modelsToTry = [
+    "meta-llama/llama-3.3-70b-instruct:free",
+    "thinkingmachines/inkling-small:free",
+    "nvidia/nemotron-3.5-lightning:free",
+    "openrouter/free",
+  ];
 
-  if (!response.ok) {
-    let errorMsg = response.statusText;
-    try {
-      const errorBody = await response.json();
-      errorMsg = JSON.stringify(errorBody.error || errorBody);
-    } catch (e) {
-      // Ignore if not JSON
+  let lastError: any = null;
+
+  for (const model of modelsToTry) {
+    if (parentSignal?.aborted) {
+      throw new Error("Cover letter request was aborted");
     }
-    throw new Error(`OpenRouter API error (${response.status}): ${errorMsg}`);
+
+    logDev(`[OpenRouter] Trying model '${model}' for cover letter generation...`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 18000);
+
+    const handleParentAbort = () => controller.abort();
+    if (parentSignal) {
+      parentSignal.addEventListener("abort", handleParentAbort);
+    }
+
+    try {
+      const response = await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer":
+              typeof window !== "undefined"
+                ? window.location.origin
+                : "http://localhost:3000",
+            "X-Title": "EasyResume AI",
+          },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.2,
+            max_tokens: 1500,
+          }),
+          signal: controller.signal,
+        },
+      );
+
+      clearTimeout(timeoutId);
+      if (parentSignal) {
+        parentSignal.removeEventListener("abort", handleParentAbort);
+      }
+
+      if (!response.ok) {
+        let errorMsg = response.statusText;
+        try {
+          const errorBody = await response.json();
+          errorMsg = JSON.stringify(errorBody.error || errorBody);
+        } catch (e) {}
+        throw new Error(`OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`);
+      }
+
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+
+      if (!text) {
+        throw new Error(`Empty response content from model ${model}`);
+      }
+
+      return text.trim();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (parentSignal) {
+        parentSignal.removeEventListener("abort", handleParentAbort);
+      }
+
+      if (parentSignal?.aborted) {
+        throw err;
+      }
+
+      logDev(`[OpenRouter] Model '${model}' failed during cover letter generation:`, err?.message || err);
+      lastError = err;
+    }
   }
 
-  const data = await response.json();
-  const text = data.choices[0].message.content;
-
-  if (!text) {
-    throw new Error("Empty response from OpenRouter");
-  }
-
-  return text.trim();
+  throw lastError || new Error("All OpenRouter fallback models failed to generate cover letter");
 };
 
 export const modifyResumeWithOpenRouter = async (
@@ -210,9 +258,9 @@ export const modifyResumeWithOpenRouter = async (
   const prompt = generateTailorResumePrompt(formData, jobDescription, atsReport);
 
   const modelsToTry = [
-    "nvidia/nemotron-3.5-lightning:free",
-    "thinkingmachines/inkling-small:free",
     "meta-llama/llama-3.3-70b-instruct:free",
+    "thinkingmachines/inkling-small:free",
+    "nvidia/nemotron-3.5-lightning:free",
     "openrouter/free",
   ];
 
@@ -226,7 +274,7 @@ export const modifyResumeWithOpenRouter = async (
 
     logDev(`[OpenRouter] Trying model '${model}' for resume tailoring...`);
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s per attempt
+    const timeoutId = setTimeout(() => controller.abort(), 18000); // 18s per attempt limit
 
     const handleParentAbort = () => controller.abort();
     if (parentSignal) {
@@ -250,6 +298,8 @@ export const modifyResumeWithOpenRouter = async (
           body: JSON.stringify({
             model,
             messages: [{ role: "user", content: prompt }],
+            temperature: 0.2,
+            max_tokens: 1500,
           }),
           signal: controller.signal,
         },

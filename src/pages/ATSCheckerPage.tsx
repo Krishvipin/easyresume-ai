@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Download, FileText, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
+import { Download, FileText, AlertCircle, Copy, CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
 import { calculateATSScore } from "../utils/keyword-extractor";
 import { getDynamicSuggestionsFromOpenRouter } from "../lib/openrouter";
 
@@ -18,19 +19,84 @@ interface ATSCheckState {
 }
 
 const logDev = (...args: any[]) => {
-  if (import.meta.env?.DEV) {
-    console.log(...args);
-  }
+  console.log("[EasyResume AI]", ...args);
 };
 
 export default function ATSCheckerPage() {
-  const [state, setState] = useState<ATSCheckState>({
-    resume: "",
-    jobDescription: "",
-    isChecking: false,
+  const navigate = useNavigate();
+
+  const [state, setState] = useState<ATSCheckState>(() => {
+    const saved = localStorage.getItem("easyresume_ats_checker_data");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          resume: parsed.resume || "",
+          jobDescription: parsed.jobDescription || "",
+          isChecking: false,
+          error: parsed.error,
+          results: parsed.results,
+        };
+      } catch (e) {}
+    }
+    return {
+      resume: "",
+      jobDescription: "",
+      isChecking: false,
+    };
   });
+
   const [loadingStep, setLoadingStep] = useState(0);
   const [isCopied, setIsCopied] = useState(false);
+
+  useEffect(() => {
+    if (!state.isChecking) {
+      localStorage.setItem(
+        "easyresume_ats_checker_data",
+        JSON.stringify({
+          resume: state.resume,
+          jobDescription: state.jobDescription,
+          error: state.error,
+          results: state.results,
+        })
+      );
+    }
+  }, [state.resume, state.jobDescription, state.results, state.error, state.isChecking]);
+
+  const handleResetScan = () => {
+    logDev("[ATSChecker] Resetting ATS scanner state");
+    setState({
+      resume: "",
+      jobDescription: "",
+      isChecking: false,
+    });
+    localStorage.removeItem("easyresume_ats_checker_data");
+  };
+
+  const handleSendToTailorResume = () => {
+    const rawData = state.results?.rawData;
+    let atsReportSummary = "";
+    if (rawData) {
+      const summaryText = rawData.summary || "";
+      const missingSkills = (rawData.missingSkills || [])
+        .map((s: any) => typeof s === "string" ? s : `${s.skill || s.name} (${s.importance || "Required"})`)
+        .join(", ");
+      const recs = (rawData.recommendations || []).map((r: any) => typeof r === "string" ? r : `${r.title}: ${r.description}`).join("\n- ");
+      
+      atsReportSummary = `Summary: ${summaryText}\n\nMissing Skills: ${missingSkills}\n\nKey Recommendations:\n- ${recs}`;
+    } else if (state.results?.suggestions) {
+      atsReportSummary = state.results.suggestions.join("\n");
+    }
+
+    const tailorData = {
+      jobDescription: state.jobDescription,
+      atsReport: atsReportSummary,
+    };
+
+    logDev("[ATSChecker] Sending Job Description and ATS Report to Tailor Resume page:", tailorData);
+    localStorage.setItem("easyresume_tailor_input_data", JSON.stringify(tailorData));
+    navigate("/resume-builder");
+  };
 
   const loadingMessages = [
     "Scanning resume for ATS keywords...",
@@ -329,19 +395,32 @@ export default function ATSCheckerPage() {
               </div>
             </div>
 
-            {/* Analyze Button */}
-            <button
-              onClick={handleCheckATS}
-              disabled={state.isChecking || !state.resume.trim() || !state.jobDescription.trim()}
-              className={`w-full py-4 px-6 rounded-xl text-[16px] font-semibold flex items-center justify-center gap-3 transition-all ${
-                state.resume.trim() && state.jobDescription.trim()
-                  ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              } disabled:opacity-50`}
-            >
-              <FileText size={20} />
-              {state.isChecking ? "Analyzing..." : "Analyze Match"}
-            </button>
+            {/* Analyze & Reset Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleCheckATS}
+                disabled={state.isChecking || !state.resume.trim() || !state.jobDescription.trim()}
+                className={`flex-1 py-4 px-6 rounded-xl text-[16px] font-semibold flex items-center justify-center gap-3 transition-all ${
+                  state.resume.trim() && state.jobDescription.trim()
+                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                } disabled:opacity-50`}
+              >
+                <FileText size={20} />
+                {state.isChecking ? "Analyzing..." : "Analyze Match"}
+              </button>
+
+              {(state.resume || state.jobDescription || state.results) && (
+                <button
+                  onClick={handleResetScan}
+                  title="Reset inputs and scan results"
+                  className="px-4 py-4 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-all flex items-center justify-center gap-1.5 text-[14px]"
+                >
+                  <RotateCcw size={18} />
+                  <span>Reset</span>
+                </button>
+              )}
+            </div>
           </motion.div>
 
           {/* Right Section - Results */}
@@ -551,13 +630,20 @@ export default function ATSCheckerPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex justify-end items-center gap-3 pt-6 border-t border-gray-200">
+                  <div className="flex justify-end items-center gap-3 pt-6 border-t border-gray-200 flex-wrap">
                     <button
                       onClick={handleCopyText}
-                      className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[14px] font-medium hover:bg-emerald-100 transition-all"
+                      className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-[14px] font-medium hover:bg-emerald-100 transition-all"
                     >
                       {isCopied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                       {isCopied ? "Copied!" : "Copy Text"}
+                    </button>
+                    <button
+                      onClick={handleSendToTailorResume}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#27AE60] text-white rounded-xl text-[14px] font-semibold hover:bg-[#1E8E4D] shadow-md hover:shadow-lg transition-all"
+                    >
+                      <Sparkles size={16} />
+                      <span>Send to Tailor Resume</span>
                     </button>
                   </div>
                 </div>

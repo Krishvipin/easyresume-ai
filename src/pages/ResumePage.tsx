@@ -88,8 +88,8 @@ const initialFormData: FormData = {
   fullName: "Sarah",
   role: "UIUX Designer",
   email: "Sarah@email.com",
-  phone: "+91 9962139116",
-  location: "Chennai",
+  phone: "+91 9876543210",
+  location: "Texas",
   experience: 6,
   summary: "Tell me about yourself short...",
   linksPortfolio: [
@@ -191,8 +191,56 @@ export default function ResumePage() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isTextCopied, setIsTextCopied] = useState(false);
 
-  const [tailorJobDescription, setTailorJobDescription] = useState("");
-  const [tailorAtsReport, setTailorAtsReport] = useState("");
+  const [tailorJobDescription, setTailorJobDescription] = useState<string>(
+    () => {
+      const saved = localStorage.getItem("easyresume_tailor_input_data");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return parsed.jobDescription || "";
+        } catch (e) {}
+      }
+      return "";
+    },
+  );
+
+  const [tailorAtsReport, setTailorAtsReport] = useState<string>(() => {
+    const saved = localStorage.getItem("easyresume_tailor_input_data");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.atsReport || "";
+      } catch (e) {}
+    }
+    return "";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(
+      "easyresume_tailor_input_data",
+      JSON.stringify({
+        jobDescription: tailorJobDescription,
+        atsReport: tailorAtsReport,
+      }),
+    );
+  }, [tailorJobDescription, tailorAtsReport]);
+
+  useEffect(() => {
+    const loadTailorInputs = () => {
+      const saved = localStorage.getItem("easyresume_tailor_input_data");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed.jobDescription)
+            setTailorJobDescription(parsed.jobDescription);
+          if (parsed.atsReport) setTailorAtsReport(parsed.atsReport);
+        } catch (e) {}
+      }
+    };
+    window.addEventListener("focus", loadTailorInputs);
+    return () => window.removeEventListener("focus", loadTailorInputs);
+  }, []);
+
   const [isTailoring, setIsTailoring] = useState(false);
   const [tailorError, setTailorError] = useState<string | undefined>();
   const [tailorSuccessMessage, setTailorSuccessMessage] = useState<
@@ -1329,9 +1377,6 @@ export default function ResumePage() {
                       <div className="text-[22px] font-bold text-black font-display">
                         Default Resume
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px] font-semibold uppercase">
-                        Static
-                      </span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -1344,7 +1389,7 @@ export default function ResumePage() {
                       </button>
                       <button
                         onClick={handleCopyText}
-                        className={`flex items-center gap-2 px-3 py-2 border rounded text-[12px] font-medium transition-all ${
+                        className={`flex items-center justify-center gap-2 w-[110px] py-2 border rounded text-[12px] font-medium transition-all ${
                           isTextCopied
                             ? "border-emerald-500 text-emerald-600 bg-emerald-50"
                             : "border-black text-black hover:bg-gray-50"
@@ -1442,7 +1487,7 @@ export default function ResumePage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleCopyModifiedText}
-                          className={`flex items-center gap-2 px-3 py-2 border rounded text-[12px] font-medium transition-all ${
+                          className={`flex items-center justify-center gap-2 w-[165px] py-2 border rounded text-[12px] font-medium transition-all ${
                             isModifiedTextCopied
                               ? "border-emerald-500 text-emerald-600 bg-emerald-50"
                               : "border-emerald-700 text-emerald-800 hover:bg-emerald-50"

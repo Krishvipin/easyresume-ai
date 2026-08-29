@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Upload,
@@ -11,6 +11,7 @@ import {
   Sparkles,
   Copy,
   CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 import { generateCoverLetterPrompt } from "../lib/cover-letter-prompt";
 import { generateCoverLetterFromOpenRouter } from "../lib/openrouter";
@@ -38,26 +39,54 @@ interface CoverLetterState {
 }
 
 export default function CoverLetterPage() {
-  const [state, setState] = useState<CoverLetterState>({
-    userInfo: {
-      fullName: "",
-      email: "",
-      phone: "",
-      location: "",
-    },
-    jobDetails: [
-      {
-        id: "1",
-        role: "",
-        company: "",
-        hiringManager: "",
-      },
-    ],
-    jobDescription: "",
-    isGenerating: false,
+  const [state, setState] = useState<CoverLetterState>(() => {
+    const saved = localStorage.getItem("easyresume_cover_letter_data");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return {
+          userInfo: parsed.userInfo || { fullName: "", email: "", phone: "", location: "" },
+          jobDetails: parsed.jobDetails || [{ id: "1", role: "", company: "", hiringManager: "" }],
+          jobDescription: parsed.jobDescription || "",
+          isGenerating: false,
+          generatedLetter: parsed.generatedLetter,
+        };
+      } catch (e) {}
+    }
+    return {
+      userInfo: { fullName: "", email: "", phone: "", location: "" },
+      jobDetails: [{ id: "1", role: "", company: "", hiringManager: "" }],
+      jobDescription: "",
+      isGenerating: false,
+    };
   });
 
   const [isCopied, setIsCopied] = useState(false);
+
+  useEffect(() => {
+    if (!state.isGenerating) {
+      localStorage.setItem(
+        "easyresume_cover_letter_data",
+        JSON.stringify({
+          userInfo: state.userInfo,
+          jobDetails: state.jobDetails,
+          jobDescription: state.jobDescription,
+          generatedLetter: state.generatedLetter,
+        })
+      );
+    }
+  }, [state.userInfo, state.jobDetails, state.jobDescription, state.generatedLetter, state.isGenerating]);
+
+  const handleResetForm = () => {
+    setState({
+      userInfo: { fullName: "", email: "", phone: "", location: "" },
+      jobDetails: [{ id: "1", role: "", company: "", hiringManager: "" }],
+      jobDescription: "",
+      isGenerating: false,
+      generatedLetter: undefined,
+    });
+    localStorage.removeItem("easyresume_cover_letter_data");
+  };
 
   // User Info handlers
   const handleUserInfoChange = (field: keyof UserInfo, value: string) => {
@@ -404,35 +433,48 @@ export default function CoverLetterPage() {
               />
             </div>
 
-            {/* Generate Button */}
-            <button
-              onClick={handleGenerateLetter}
-              disabled={
-                state.isGenerating ||
-                !state.userInfo.fullName.trim() ||
-                state.jobDetails.length === 0 ||
-                !state.jobDescription.trim()
-              }
-              className={`w-full text-white py-3 px-4 rounded-lg text-[16px] font-medium flex items-center justify-center gap-2 transition-all ${
-                state.userInfo.fullName.trim() &&
-                state.jobDetails.length > 0 &&
-                state.jobDescription.trim()
-                  ? "bg-[#27AE60] hover:bg-[#1E8E4D] shadow-md shadow-[#27AE60]/20"
-                  : "bg-gray-400 hover:bg-gray-500"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {state.isGenerating ? (
-                <>
-                  <RefreshCw size={20} className="animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  Generate Cover Letter
-                  <Sparkles size={20} />
-                </>
+            {/* Generate & Reset Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleGenerateLetter}
+                disabled={
+                  state.isGenerating ||
+                  !state.userInfo.fullName.trim() ||
+                  state.jobDetails.length === 0 ||
+                  !state.jobDescription.trim()
+                }
+                className={`flex-1 text-white py-3 px-4 rounded-lg text-[16px] font-medium flex items-center justify-center gap-2 transition-all ${
+                  state.userInfo.fullName.trim() &&
+                  state.jobDetails.length > 0 &&
+                  state.jobDescription.trim()
+                    ? "bg-[#27AE60] hover:bg-[#1E8E4D] shadow-md shadow-[#27AE60]/20"
+                    : "bg-gray-400 hover:bg-gray-500"
+                }`}
+              >
+                {state.isGenerating ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    Generate Cover Letter
+                    <Sparkles size={18} />
+                  </>
+                )}
+              </button>
+
+              {(state.userInfo.fullName || state.jobDescription || state.generatedLetter) && (
+                <button
+                  onClick={handleResetForm}
+                  title="Reset form fields and generated letter"
+                  className="px-4 py-3 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 text-[14px]"
+                >
+                  <RotateCcw size={18} />
+                  <span>Reset</span>
+                </button>
               )}
-            </button>
+            </div>
           </motion.div>
 
           {/* Right Section - Output */}
