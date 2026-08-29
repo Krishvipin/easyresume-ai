@@ -7,7 +7,7 @@ const ai = new GoogleGenAI({ apiKey });
 
 export async function analyzeATS(resume: string, jobDescription: string): Promise<ATSAnalysisResult | { error: true; message: string }> {
   if (!apiKey) {
-    throw new Error("Gemini API key is not configured");
+    return { error: true, message: "Gemini API key is not configured" };
   }
 
   const prompt = generateATSPrompt(resume, jobDescription);

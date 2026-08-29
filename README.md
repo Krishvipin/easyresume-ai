@@ -71,6 +71,7 @@ The entire application runs in the browser. Resume data is stored locally in loc
   - **Download PDF** — Uses `window.print()` with print-optimized CSS (`@media print`).
   - **Download JSON** — Exports the complete resume data as a `.json` file (stamped with `_isEasyResume: true` for validation).
   - **Import JSON** — Re-imports a previously exported JSON file.
+  - **Copy Text** — State-aware copy to clipboard feature that extracts plain text.
 - **Reset** — Clears all data and reverts to the default template (with confirmation dialog).
 - **Persistence** — All form data auto-saves to `localStorage` under the key `easyresume_data`.
 
@@ -78,11 +79,11 @@ The entire application runs in the browser. Resume data is stored locally in loc
 - Two input areas: resume text and job description.
 - **File upload support** — Accepts `.txt`, `.pdf`, and `.docx` files; extracts text automatically.
 - **Three-tier AI fallback strategy**:
-  1. **Gemini AI** (primary) — Structured ATS analysis with score, suggestions, and improvements (using `gemini-1.5-flash`).
-  2. **OpenRouter** (secondary) — Deep recruiter-grade analysis with score, summary, strengths, suggestions, missing keywords, and improvements.
-  3. **Manual keyword scoring** (fallback) — Local keyword-overlap algorithm when both AI providers fail.
+  1. **Gemini AI** (primary if configured) — Structured ATS analysis with score, suggestions, and improvements (using `gemini-1.5-flash`).
+  2. **OpenRouter** (secondary/primary free models) — High-quality analysis with sequential model fallback (`nvidia/nemotron-3.5-lightning:free` → `thinkingmachines/inkling-small:free` → `openrouter/free`).
+  3. **Manual keyword scoring** (fallback) — Local keyword-overlap algorithm when AI providers fail or are unconfigured.
 - **Results display**: Color-coded score card (green ≥80%, amber ≥50%, red <50%), executive summary, strengths, missing keywords as tags, actionable suggestions, and improvements.
-- **Export results**: Copy to clipboard or download as `.txt`.
+- **Export results**: State-aware copy to clipboard.
 - **Loading overlay** with animated step-through messages.
 
 ### 5. Modify Resume (`/modify-resume`)
@@ -96,7 +97,7 @@ The entire application runs in the browser. Resume data is stored locally in loc
   - User info (name, email, phone, location).
   - Job details (role, company, hiring manager) — supports adding/removing multiple entries dynamically.
   - Complete job description text area.
-- Dedicated output UI with download feature.
+- Dedicated output UI with state-aware copy to clipboard feature.
 - *Note: Currently uses placeholder simulation logic (marked `TODO` for full AI integration).*
 
 ---
@@ -287,12 +288,12 @@ The **Resume Builder** (`ResumePage`) manages its own form state locally:
 | Property | Value |
 |---|---|
 | **Endpoint** | `https://openrouter.ai/api/v1/chat/completions` |
-| **Model** | `openrouter/free` |
+| **Models** | `nvidia/nemotron-3.5-lightning:free` (Primary), `thinkingmachines/inkling-small:free` (Fallback), `openrouter/free` |
 | **API Key** | `process.env.OPENROUTER_API_KEY` or `import.meta.env.VITE_OPENROUTER_API_KEY` |
 | **Function** | `getDynamicSuggestionsFromOpenRouter(resume, jobDescription, signal?)` |
-| **Returns** | `{ score, summary, strengths[], suggestions[], missingKeywords[], improvements[] }` |
-| **Features** | AbortController timeout support (configurable via `VITE_OPENROUTER_TIMEOUT_SECONDS`, default 60s) |
-| **Usage** | Secondary ATS analysis (fallback after Gemini fails) |
+| **Returns** | Structured `ATSAnalysisResult` (score, scoreLabel, summary, breakdown, matchedSkills, missingSkills, gaps, recommendations) |
+| **Features** | Model fallback sequence + AbortController timeout (configurable via `VITE_OPENROUTER_TIMEOUT_SECONDS`, default 60s) |
+| **Usage** | ATS analysis when Gemini is unconfigured or fails |
 
 ### 3. Manual Keyword Scoring (`src/utils/keyword-extractor.ts`)
 

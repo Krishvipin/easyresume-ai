@@ -65,79 +65,90 @@ export default function ATSCheckerPage() {
     setState({ ...state, isChecking: true, error: undefined });
 
     try {
-      // 1. Try Gemini AI for robust analysis
+      let aiResult: any = null;
+
+      // 1. Try Gemini AI if key is configured
       try {
-        const aiResults: any = await analyzeATS(state.resume, state.jobDescription);
-        
-        if (!("error" in aiResults)) {
-          setState((prev) => ({
-            ...prev,
-            isChecking: false,
-            results: {
-              score: aiResults.score,
-              suggestions: (aiResults.missingSkills || []).map((ms: any) => `Add the keyword "${ms.term}": ${ms.reason}`),
-              improvements: (aiResults.recommendations || []).map((r: any) => r.title),
-              rawData: aiResults,
-            },
-          }));
-          return;
+        const geminiRes: any = await analyzeATS(state.resume, state.jobDescription);
+        if (geminiRes && !("error" in geminiRes)) {
+          aiResult = geminiRes;
         }
-      } catch (aiError) {
-        console.warn("Gemini AI analysis failed, falling back to manual logic:", aiError);
+      } catch (geminiError) {
+        console.warn("Gemini AI analysis unavailable, attempting OpenRouter:", geminiError);
       }
 
-      // 2. Fallback to improved manual scoring based on keyword overlap
-      const manual = calculateATSScore(state.resume, state.jobDescription);
-      let score = manual.score;
-      let missing = manual.missing;
+      // 2. Try OpenRouter (with model fallbacks inside) if Gemini was not available or failed
+      if (!aiResult) {
+        const envTimeout = parseInt(import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60", 10);
+        const timeoutSeconds = isNaN(envTimeout) ? 60 : envTimeout;
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController.abort(), timeoutSeconds * 1000);
 
-      let suggestions: string[] = [];
-      let improvements: string[] = [];
-      let rawData: any = {
+        try {
+          const openRouterRes: any = await getDynamicSuggestionsFromOpenRouter(
+            state.resume,
+            state.jobDescription,
+            abortController.signal
+          );
+          clearTimeout(timeoutId);
+          if (openRouterRes && !("error" in openRouterRes)) {
+            aiResult = openRouterRes;
+          }
+        } catch (openRouterError: any) {
+          clearTimeout(timeoutId);
+          console.warn("OpenRouter AI analysis failed:", openRouterError);
+        }
+      }
+
+      // 3. If any AI provider succeeded, populate result state
+      if (aiResult) {
+        const suggestions = (aiResult.missingSkills || []).map(
+          (ms: any) => `Add the keyword "${ms.term}": ${ms.reason || "Missing requirement from job description."}`
+        );
+        const improvements = (aiResult.recommendations || []).map(
+          (r: any) => `${r.title}: ${r.description}`
+        );
+
+        setState((prev) => ({
+          ...prev,
+          isChecking: false,
+          results: {
+            score: typeof aiResult.score === "number" ? aiResult.score : 70,
+            suggestions: suggestions.length > 0 ? suggestions : ["Align experience bullets with job description requirements."],
+            improvements: improvements.length > 0 ? improvements : ["Add measurable outcomes and specific metrics."],
+            rawData: aiResult,
+          },
+        }));
+        return;
+      }
+
+      // 4. Local Keyword Overlap Fallback when AI models fail or are unconfigured
+      const manual = calculateATSScore(state.resume, state.jobDescription);
+      const score = manual.score;
+      const missing = manual.missing;
+
+      const suggestions = missing
+        .slice(0, 5)
+        .map((kw) => `Add the keyword "${kw}" to your resume`)
+        .concat([
+          "Include specific metrics and achievements",
+          "Improve formatting for ATS compatibility",
+        ]);
+
+      const improvements = [
+        "Use action verbs at the start of bullet points",
+        "Match the job description language",
+        "Highlight technical skills mentioned in the job posting",
+      ];
+
+      const rawData = {
         score,
-        scoreLabel: "Keyword Match",
+        scoreLabel: score >= 80 ? "Strong Match" : score >= 50 ? "Moderate Match" : "Weak Match",
         summary: "This is a basic keyword matching score generated locally because AI providers are unavailable.",
         matchedSkills: manual.matched.map((m: string) => ({ term: m, importance: "keyword" })),
         missingSkills: manual.missing.map((m: string) => ({ term: m, importance: "keyword" })),
         recommendations: missing.slice(0, 5).map((m: string) => ({ title: `Add missing keyword: ${m}`, description: "This keyword is present in the job description." }))
       };
-
-      // Wrap OpenRouter call in a timeout configured by environment variable
-      const envTimeout = parseInt(import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60", 10);
-      const timeoutSeconds = isNaN(envTimeout) ? 60 : envTimeout;
-      
-      const abortController = new AbortController();
-      const timeoutId = setTimeout(() => abortController.abort(), timeoutSeconds * 1000);
-
-      try {
-        const dynamicFeedback: any = await getDynamicSuggestionsFromOpenRouter(state.resume, state.jobDescription, abortController.signal);
-        clearTimeout(timeoutId);
-        
-        if (!("error" in dynamicFeedback)) {
-          score = dynamicFeedback.score ?? score;
-          suggestions = (dynamicFeedback.missingSkills || []).map((ms: any) => `Add the keyword "${ms.term}": ${ms.reason}`);
-          improvements = (dynamicFeedback.recommendations || []).map((r: any) => r.title);
-          rawData = dynamicFeedback;
-        }
-      } catch (openRouterError: any) {
-        clearTimeout(timeoutId);
-        
-        if (openRouterError.name === 'AbortError') {
-          throw new Error("Analysis timed out. Too many requests. Please try again.");
-        }
-
-        console.warn("OpenRouter dynamic feedback failed, falling back to static suggestions:", openRouterError);
-        suggestions = missing.slice(0, 5).map((kw) => `Add the keyword "${kw}" to your resume`).concat([
-          "Include specific metrics and achievements",
-          "Improve formatting for ATS compatibility",
-        ]);
-
-        improvements = [
-          "Use action verbs at the start of bullet points",
-          "Match the job description language",
-          "Highlight technical skills mentioned in the job posting",
-        ];
-      }
 
       setState((prev) => ({
         ...prev,
@@ -156,6 +167,8 @@ export default function ATSCheckerPage() {
         isChecking: false,
         error: error.message || "Something went wrong. Please try again.",
       }));
+    } finally {
+      setState((prev) => ({ ...prev, isChecking: false }));
     }
   };
 
