@@ -1,10 +1,16 @@
 import { generateATSPrompt } from "./ats-prompt";
 import type { ATSAnalysisResult } from "../types/ats";
 
+const logDev = (...args: any[]) => {
+  if (import.meta.env?.DEV) {
+    console.log(...args);
+  }
+};
+
 export const getDynamicSuggestionsFromOpenRouter = async (
   resume: string,
   jobDescription: string,
-  signal?: AbortSignal,
+  parentSignal?: AbortSignal,
 ): Promise<ATSAnalysisResult | { error: true; message: string }> => {
   // Support both process.env and import.meta.env for compatibility
   const apiKey =
@@ -13,6 +19,7 @@ export const getDynamicSuggestionsFromOpenRouter = async (
     "";
 
   if (!apiKey) {
+    logDev("[OpenRouter] API key is not configured.");
     throw new Error("OpenRouter API key is not configured");
   }
 
@@ -21,12 +28,28 @@ export const getDynamicSuggestionsFromOpenRouter = async (
   const modelsToTry = [
     "nvidia/nemotron-3.5-lightning:free",
     "thinkingmachines/inkling-small:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
     "openrouter/free",
   ];
 
   let lastError: any = null;
+  logDev("[OpenRouter] Initiating ATS analysis flow across candidate models:", modelsToTry);
 
   for (const model of modelsToTry) {
+    if (parentSignal?.aborted) {
+      logDev("[OpenRouter] Analysis request aborted by parent signal.");
+      throw new Error("Analysis request was aborted");
+    }
+
+    logDev(`[OpenRouter] Trying model '${model}'...`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s limit per model attempt
+
+    const handleParentAbort = () => controller.abort();
+    if (parentSignal) {
+      parentSignal.addEventListener("abort", handleParentAbort);
+    }
+
     try {
       const response = await fetch(
         "https://openrouter.ai/api/v1/chat/completions",
@@ -43,12 +66,16 @@ export const getDynamicSuggestionsFromOpenRouter = async (
           },
           body: JSON.stringify({
             model,
-            response_format: { type: "json_object" },
             messages: [{ role: "user", content: prompt }],
           }),
-          signal,
+          signal: controller.signal,
         },
       );
+
+      clearTimeout(timeoutId);
+      if (parentSignal) {
+        parentSignal.removeEventListener("abort", handleParentAbort);
+      }
 
       if (!response.ok) {
         let errorMsg = response.statusText;
@@ -58,35 +85,47 @@ export const getDynamicSuggestionsFromOpenRouter = async (
         } catch (e) {
           // Ignore if not JSON
         }
+        logDev(`[OpenRouter] Model '${model}' HTTP Error (${response.status}):`, errorMsg);
         throw new Error(`OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`);
       }
 
       const data = await response.json();
+      logDev(`[OpenRouter] Model '${model}' raw API response data:`, data);
       const text = data.choices?.[0]?.message?.content;
 
       if (!text) {
+        logDev(`[OpenRouter] Model '${model}' returned empty content.`);
         throw new Error(`Empty response content from OpenRouter model ${model}`);
       }
 
-      // Extract JSON from the response (cleaning up markdown fences if present)
+      // Clean markdown fences if present
       const cleanText = text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
       const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed && typeof parsed === "object") {
+          logDev(`[OpenRouter] Model '${model}' successfully produced ATS result:`, parsed);
           return parsed as ATSAnalysisResult;
         }
       }
+      logDev(`[OpenRouter] Model '${model}' returned non-JSON text output:`, text);
       throw new Error(`Failed to parse valid JSON from OpenRouter model ${model}`);
     } catch (err: any) {
-      if (signal?.aborted || err.name === "AbortError") {
+      clearTimeout(timeoutId);
+      if (parentSignal) {
+        parentSignal.removeEventListener("abort", handleParentAbort);
+      }
+
+      if (parentSignal?.aborted) {
         throw err;
       }
-      console.warn(`OpenRouter model '${model}' failed:`, err);
+
+      logDev(`[OpenRouter] Model '${model}' failed or timed out:`, err?.message || err);
       lastError = err;
     }
   }
 
+  logDev("[OpenRouter] All model attempts failed. Last error:", lastError);
   throw lastError || new Error("All OpenRouter models failed to respond");
 };
 

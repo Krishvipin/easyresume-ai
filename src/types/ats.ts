@@ -23,7 +23,7 @@ export interface RequirementMatch {
 export interface GapOrIssue {
   issue: string;
   description: string;
-  severity: "high" | "medium" | "low";
+  severity?: "high" | "medium" | "low" | string;
 }
 
 export interface Recommendation {

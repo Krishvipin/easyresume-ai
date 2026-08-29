@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Download, FileText, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
 import { calculateATSScore } from "../utils/keyword-extractor";
-import { analyzeATS } from "../lib/gemini";
 import { getDynamicSuggestionsFromOpenRouter } from "../lib/openrouter";
 
 interface ATSCheckState {
@@ -17,6 +16,12 @@ interface ATSCheckState {
     rawData?: any;
   };
 }
+
+const logDev = (...args: any[]) => {
+  if (import.meta.env?.DEV) {
+    console.log(...args);
+  }
+};
 
 export default function ATSCheckerPage() {
   const [state, setState] = useState<ATSCheckState>({
@@ -62,46 +67,38 @@ export default function ATSCheckerPage() {
       return;
     }
 
+    logDev("[ATSChecker] Starting ATS analysis...");
     setState({ ...state, isChecking: true, error: undefined });
 
     try {
       let aiResult: any = null;
 
-      // 1. Try Gemini AI if key is configured
+      // Call OpenRouter AI directly
+      const envTimeout = parseInt(import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60", 10);
+      const timeoutSeconds = isNaN(envTimeout) ? 60 : envTimeout;
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), timeoutSeconds * 1000);
+
       try {
-        const geminiRes: any = await analyzeATS(state.resume, state.jobDescription);
-        if (geminiRes && !("error" in geminiRes)) {
-          aiResult = geminiRes;
+        logDev("[ATSChecker] Calling OpenRouter AI...");
+        const openRouterRes: any = await getDynamicSuggestionsFromOpenRouter(
+          state.resume,
+          state.jobDescription,
+          abortController.signal
+        );
+        clearTimeout(timeoutId);
+        if (openRouterRes && !("error" in openRouterRes)) {
+          logDev("[ATSChecker] OpenRouter AI succeeded:", openRouterRes);
+          aiResult = openRouterRes;
         }
-      } catch (geminiError) {
-        console.warn("Gemini AI analysis unavailable, attempting OpenRouter:", geminiError);
-      }
-
-      // 2. Try OpenRouter (with model fallbacks inside) if Gemini was not available or failed
-      if (!aiResult) {
-        const envTimeout = parseInt(import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60", 10);
-        const timeoutSeconds = isNaN(envTimeout) ? 60 : envTimeout;
-        const abortController = new AbortController();
-        const timeoutId = setTimeout(() => abortController.abort(), timeoutSeconds * 1000);
-
-        try {
-          const openRouterRes: any = await getDynamicSuggestionsFromOpenRouter(
-            state.resume,
-            state.jobDescription,
-            abortController.signal
-          );
-          clearTimeout(timeoutId);
-          if (openRouterRes && !("error" in openRouterRes)) {
-            aiResult = openRouterRes;
-          }
-        } catch (openRouterError: any) {
-          clearTimeout(timeoutId);
-          console.warn("OpenRouter AI analysis failed:", openRouterError);
-        }
+      } catch (openRouterError: any) {
+        clearTimeout(timeoutId);
+        logDev("[ATSChecker] OpenRouter AI analysis failed:", openRouterError);
       }
 
       // 3. If any AI provider succeeded, populate result state
       if (aiResult) {
+        logDev("[ATSChecker] Displaying AI result in UI:", aiResult);
         const suggestions = (aiResult.missingSkills || []).map(
           (ms: any) => `Add the keyword "${ms.term}": ${ms.reason || "Missing requirement from job description."}`
         );
@@ -123,6 +120,7 @@ export default function ATSCheckerPage() {
       }
 
       // 4. Local Keyword Overlap Fallback when AI models fail or are unconfigured
+      logDev("[ATSChecker] Step 3: Falling back to local keyword overlap algorithm...");
       const manual = calculateATSScore(state.resume, state.jobDescription);
       const score = manual.score;
       const missing = manual.missing;
@@ -372,56 +370,183 @@ export default function ATSCheckerPage() {
               ) : state.results ? (
                 <div className="space-y-8">
                   {/* Score Card */}
-                  <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl p-8 text-center text-white shadow-xl">
-                    <p className="text-[14px] font-medium uppercase tracking-wide mb-4 opacity-90">
+                  <div
+                    className={`rounded-2xl p-8 text-center text-white shadow-xl bg-gradient-to-br ${
+                      state.results.score >= 80
+                        ? "from-emerald-500 to-emerald-600"
+                        : state.results.score >= 60
+                        ? "from-amber-500 to-amber-600"
+                        : "from-amber-600 to-rose-600"
+                    }`}
+                  >
+                    <p className="text-[14px] font-medium uppercase tracking-wide mb-2 opacity-90">
                       ATS Compatibility Score
                     </p>
-                    <div className="text-[72px] font-bold mb-3">
+                    <div className="text-[64px] font-extrabold mb-1 leading-none">
                       {state.results.score}%
                     </div>
-                    <p className="text-[16px] opacity-90">
-                      Your resume is moderately optimized for ATS systems
+                    {state.results.rawData?.scoreLabel && (
+                      <span className="inline-block px-3 py-1 rounded-full bg-white/20 text-white text-[13px] font-semibold mb-4 backdrop-blur-sm">
+                        {state.results.rawData.scoreLabel}
+                      </span>
+                    )}
+                    <p className="text-[15px] opacity-95 leading-relaxed max-w-lg mx-auto">
+                      {state.results.rawData?.summary ||
+                        "Your resume alignment score evaluated against job requirements."}
                     </p>
                   </div>
 
-                  {/* Suggestions */}
+                  {/* Score Breakdown (if rawData breakdown exists) */}
+                  {state.results.rawData?.breakdown && (
+                    <div className="bg-gray-50 rounded-xl p-6 border border-gray-100 space-y-4">
+                      <h4 className="text-[16px] font-semibold text-gray-900 flex items-center gap-2">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                        Category Score Breakdown
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        {Object.entries(state.results.rawData.breakdown).map(
+                          ([key, item]: [string, any]) => {
+                            if (!item || typeof item.score !== "number") return null;
+                            const label = key
+                              .replace(/([A-Z])/g, " $1")
+                              .replace(/^./, (str) => str.toUpperCase());
+                            const percentage = Math.round(
+                              (item.score / (item.maxScore || 1)) * 100
+                            );
+                            return (
+                              <div key={key} className="space-y-1">
+                                <div className="flex justify-between text-[13px] text-gray-700 font-medium">
+                                  <span>{label}</span>
+                                  <span>
+                                    {item.score} / {item.maxScore}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                  <div
+                                    className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Matched Skills */}
+                  {Array.isArray(state.results.rawData?.matchedSkills) &&
+                    state.results.rawData.matchedSkills.length > 0 && (
+                      <div>
+                        <h4 className="text-[18px] font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                          Matched Skills ({state.results.rawData.matchedSkills.length})
+                        </h4>
+                        <div className="flex flex-wrap gap-2">
+                          {state.results.rawData.matchedSkills.map((ms: any, idx: number) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[13px] font-medium"
+                              title={ms.evidence || ""}
+                            >
+                              <CheckCircle2 size={14} className="text-emerald-600 flex-shrink-0" />
+                              {ms.term}
+                              {ms.importance && (
+                                <span className="text-[10px] uppercase font-bold text-emerald-600 opacity-75">
+                                  ({ms.importance})
+                                </span>
+                              )}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Missing Skills / Key Suggestions */}
                   <div className="space-y-6">
                     <div>
                       <h4 className="text-[18px] font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                        Key Suggestions
+                        <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                        Missing Qualifications & Keywords
                       </h4>
-                      <div className="space-y-3">
-                        {Array.isArray(state.results.suggestions) && state.results.suggestions.map((suggestion, idx) => (
-                          <div key={idx} className="flex gap-3 items-start">
-                            <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <span className="text-emerald-600 text-xs font-bold">•</span>
+                      {Array.isArray(state.results.rawData?.missingSkills) &&
+                      state.results.rawData.missingSkills.length > 0 ? (
+                        <div className="space-y-3">
+                          {state.results.rawData.missingSkills.map((ms: any, idx: number) => (
+                            <div key={idx} className="flex gap-3 items-start bg-amber-50/50 p-3.5 rounded-xl border border-amber-100">
+                              <div className="w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <span className="text-amber-700 text-xs font-bold">•</span>
+                              </div>
+                              <div className="text-[14px]">
+                                <span className="font-semibold text-gray-900">{ms.term}</span>
+                                {ms.importance && (
+                                  <span className="ml-2 px-1.5 py-0.5 rounded text-[11px] font-bold uppercase bg-amber-100 text-amber-800">
+                                    {ms.importance}
+                                  </span>
+                                )}
+                                <p className="text-gray-600 mt-1 text-[13.5px] leading-relaxed">
+                                  {ms.reason}
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-[15px] text-gray-700 leading-relaxed">
-                              {suggestion}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {Array.isArray(state.results.suggestions) &&
+                            state.results.suggestions.map((suggestion, idx) => (
+                              <div key={idx} className="flex gap-3 items-start">
+                                <div className="w-5 h-5 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <span className="text-amber-700 text-xs font-bold">•</span>
+                                </div>
+                                <p className="text-[15px] text-gray-700 leading-relaxed">
+                                  {suggestion}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
 
+                    {/* Recommendations / Improvements to Make */}
                     <div>
                       <h4 className="text-[18px] font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                        Improvements to Make
+                        Top Recommendations & Improvements
                       </h4>
-                      <div className="space-y-3">
-                        {Array.isArray(state.results.improvements) && state.results.improvements.map((improvement, idx) => (
-                          <div key={idx} className="flex gap-3 items-start">
-                            <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <span className="text-emerald-600 text-xs font-bold">•</span>
+                      {Array.isArray(state.results.rawData?.recommendations) &&
+                      state.results.rawData.recommendations.length > 0 ? (
+                        <div className="space-y-3">
+                          {state.results.rawData.recommendations.map((rec: any, idx: number) => (
+                            <div key={idx} className="flex gap-3 items-start bg-gray-50 p-3.5 rounded-xl border border-gray-200">
+                              <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-emerald-700 text-xs font-bold">
+                                {rec.priority || idx + 1}
+                              </div>
+                              <div className="text-[14px]">
+                                <span className="font-semibold text-gray-900">{rec.title}</span>
+                                <p className="text-gray-600 mt-1 text-[13.5px] leading-relaxed">
+                                  {rec.description}
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-[15px] text-gray-700 leading-relaxed">
-                              {improvement}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {Array.isArray(state.results.improvements) &&
+                            state.results.improvements.map((improvement, idx) => (
+                              <div key={idx} className="flex gap-3 items-start">
+                                <div className="w-5 h-5 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <span className="text-emerald-600 text-xs font-bold">•</span>
+                                </div>
+                                <p className="text-[15px] text-gray-700 leading-relaxed">
+                                  {improvement}
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 

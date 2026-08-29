@@ -13,7 +13,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { generateCoverLetterPrompt } from "../lib/cover-letter-prompt";
-import { generateCoverLetter } from "../lib/gemini";
 import { generateCoverLetterFromOpenRouter } from "../lib/openrouter";
 
 interface UserInfo {
@@ -140,38 +139,30 @@ export default function CoverLetterPage() {
 
       let letterText = "";
 
-      // 1. Try Gemini
-      try {
-        letterText = await generateCoverLetter(prompt);
-      } catch (aiError) {
-        console.warn("Gemini failed, trying OpenRouter...", aiError);
-        // 2. Fallback to OpenRouter
-        const envTimeout = parseInt(
-          import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60",
-          10,
-        );
-        const timeoutSeconds = isNaN(envTimeout) ? 60 : envTimeout;
-        const abortController = new AbortController();
-        const timeoutId = setTimeout(
-          () => abortController.abort(),
-          timeoutSeconds * 1000,
-        );
+      // Call OpenRouter directly
+      const envTimeout = parseInt(
+        import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60",
+        10,
+      );
+      const timeoutSeconds = isNaN(envTimeout) ? 60 : envTimeout;
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(
+        () => abortController.abort(),
+        timeoutSeconds * 1000,
+      );
 
-        try {
-          letterText = await generateCoverLetterFromOpenRouter(
-            prompt,
-            abortController.signal,
-          );
-          clearTimeout(timeoutId);
-        } catch (openRouterError: any) {
-          clearTimeout(timeoutId);
-          if (openRouterError.name === "AbortError") {
-            throw new Error("Analysis timed out. Please try again.");
-          }
-          throw new Error(
-            "Both AI providers failed. Please check your API keys or try again later.",
-          );
+      try {
+        letterText = await generateCoverLetterFromOpenRouter(
+          prompt,
+          abortController.signal,
+        );
+        clearTimeout(timeoutId);
+      } catch (openRouterError: any) {
+        clearTimeout(timeoutId);
+        if (openRouterError.name === "AbortError") {
+          throw new Error("Generation timed out. Please try again.");
         }
+        throw openRouterError;
       }
 
       setState((prev) => ({
