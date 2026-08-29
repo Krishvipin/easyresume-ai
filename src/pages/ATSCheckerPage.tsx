@@ -331,15 +331,15 @@ export default function ATSCheckerPage() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col pt-20 pb-20">
+      <div className="flex-1 flex flex-col pt-10 sm:pt-16 md:pt-20 pb-12 sm:pb-20">
       <div className="max-w-7xl mx-auto px-4 w-full">
         {/* Header */}
-        <div className="flex flex-col gap-1 mb-12">
+        <div className="flex flex-col gap-1 mb-8 sm:mb-12">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-[24px] font-bold tracking-tight text-black font-display"
+            className="text-2xl sm:text-3xl font-bold tracking-tight text-black font-display"
           >
             ATS Score Checker
           </motion.h1>
@@ -347,7 +347,7 @@ export default function ATSCheckerPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-[16px] leading-[26px] text-[#4A4A57] font-normal max-w-[667px]"
+            className="text-sm sm:text-base leading-relaxed sm:leading-[26px] text-[#4A4A57] font-normal max-w-[667px]"
           >
             Paste your resume + a job description — AI shows exactly what to
             change before you apply.
@@ -355,7 +355,7 @@ export default function ATSCheckerPage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6 sm:gap-8">
           {/* Left Section - Inputs */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -364,39 +364,39 @@ export default function ATSCheckerPage() {
             className="flex flex-col gap-6"
           >
             {/* Resume Input */}
-            <div className="border border-[#E5E7EB] rounded-xl p-5 flex flex-col gap-4">
-              <label className="text-[16px] font-semibold text-gray-900">
+            <div className="border border-[#E5E7EB] rounded-xl p-4 sm:p-5 flex flex-col gap-4">
+              <label className="text-base font-semibold text-gray-900">
                 Your Resume
               </label>
-              <div className="border border-[#E5E7EB] rounded-lg p-4">
+              <div className="border border-[#E5E7EB] rounded-lg p-3 sm:p-4">
                 <textarea
                   value={state.resume}
                   onChange={handleResumeChange}
                   placeholder="Paste your resume content here..."
-                  className="w-full h-[200px] text-[14px] text-gray-600 focus:outline-none resize-none bg-transparent placeholder-gray-400"
+                  className="w-full h-[180px] sm:h-[200px] text-sm text-gray-600 focus:outline-none resize-none bg-transparent placeholder-gray-400"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 />
               </div>
             </div>
 
             {/* Job Description Input */}
-            <div className="border border-[#E5E7EB] rounded-xl p-5 flex flex-col gap-4">
-              <label className="text-[16px] font-semibold text-gray-900">
+            <div className="border border-[#E5E7EB] rounded-xl p-4 sm:p-5 flex flex-col gap-4">
+              <label className="text-base font-semibold text-gray-900">
                 Job Description
               </label>
-              <div className="border border-[#E5E7EB] rounded-lg p-4">
+              <div className="border border-[#E5E7EB] rounded-lg p-3 sm:p-4">
                 <textarea
                   value={state.jobDescription}
                   onChange={handleJobDescriptionChange}
                   placeholder="Paste the full job description here..."
-                  className="w-full h-[200px] text-[14px] text-gray-600 focus:outline-none resize-none bg-transparent placeholder-gray-400"
+                  className="w-full h-[180px] sm:h-[200px] text-sm text-gray-600 focus:outline-none resize-none bg-transparent placeholder-gray-400"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 />
               </div>
             </div>
 
             {/* Analyze & Reset Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleCheckATS}
                 disabled={state.isChecking || !state.resume.trim() || !state.jobDescription.trim()}
@@ -630,17 +630,17 @@ export default function ATSCheckerPage() {
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex justify-end items-center gap-3 pt-6 border-t border-gray-200 flex-wrap">
+                  <div className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-3 pt-6 border-t border-gray-200">
                     <button
                       onClick={handleCopyText}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-[14px] font-medium hover:bg-emerald-100 transition-all"
+                      className="flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-sm font-medium hover:bg-emerald-100 transition-all"
                     >
                       {isCopied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                       {isCopied ? "Copied!" : "Copy Text"}
                     </button>
                     <button
                       onClick={handleSendToTailorResume}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-[#27AE60] text-white rounded-xl text-[14px] font-semibold hover:bg-[#1E8E4D] shadow-md hover:shadow-lg transition-all"
+                      className="flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-[#27AE60] text-white rounded-xl text-sm font-semibold hover:bg-[#1E8E4D] shadow-md hover:shadow-lg transition-all"
                     >
                       <Sparkles size={16} />
                       <span>Send to Tailor Resume</span>

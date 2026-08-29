@@ -1385,10 +1385,10 @@ export default function ResumePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                       <button
                         onClick={() => setShowResetConfirm(true)}
-                        className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-all mr-1"
+                        className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded text-[12px] font-medium text-gray-700 hover:bg-gray-50 transition-all"
                       >
                         <RotateCcw size={14} />
                         Reset
@@ -1440,7 +1440,7 @@ export default function ResumePage() {
                   </div>
 
                   <div
-                    className="bg-white overflow-auto print:overflow-visible"
+                    className="bg-white overflow-x-auto print:overflow-visible rounded-xl shadow-sm border border-gray-100 p-2 sm:p-4"
                     id="resumePreview"
                   >
                     {formData.fullName || formData.role || formData.summary ? (
@@ -1490,7 +1490,7 @@ export default function ResumePage() {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
                         <button
                           onClick={handleCopyModifiedText}
                           className={`flex items-center justify-center gap-2 w-[165px] py-2 border rounded text-[12px] font-medium transition-all ${
@@ -1526,7 +1526,7 @@ export default function ResumePage() {
                       </div>
                     </div>
 
-                    <div className="bg-white overflow-auto">
+                    <div className="bg-white overflow-x-auto rounded-xl shadow-sm border border-emerald-100 p-2 sm:p-4">
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}

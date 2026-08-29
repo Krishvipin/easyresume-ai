@@ -79,10 +79,11 @@ export const getDynamicSuggestionsFromOpenRouter = async (
   const prompt = generateATSPrompt(resume, jobDescription);
 
   const modelsToTry = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "thinkingmachines/inkling-small:free",
-    "nvidia/nemotron-3.5-lightning:free",
     "openrouter/free",
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "google/gemma-2-9b-it:free",
+    "qwen/qwen-2.5-7b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
   ];
 
   let lastError: any = null;
@@ -195,10 +196,11 @@ export const generateCoverLetterFromOpenRouter = async (
   }
 
   const modelsToTry = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "thinkingmachines/inkling-small:free",
-    "nvidia/nemotron-3.5-lightning:free",
     "openrouter/free",
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "google/gemma-2-9b-it:free",
+    "qwen/qwen-2.5-7b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
   ];
 
   let lastError: any = null;
@@ -317,10 +319,11 @@ export const modifyResumeWithOpenRouter = async (
   const prompt = generateTailorResumePrompt(formData, jobDescription, atsReport);
 
   const modelsToTry = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "thinkingmachines/inkling-small:free",
-    "nvidia/nemotron-3.5-lightning:free",
     "openrouter/free",
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "google/gemma-2-9b-it:free",
+    "qwen/qwen-2.5-7b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
   ];
 
   let lastError: any = null;

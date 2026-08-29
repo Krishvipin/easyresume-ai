@@ -240,15 +240,15 @@ export default function CoverLetterPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col pt-20 pb-20">
+    <div className="flex-1 flex flex-col pt-10 sm:pt-16 md:pt-20 pb-12 sm:pb-20">
       <div className="max-w-7xl mx-auto px-4 w-full">
         {/* Header */}
-        <div className="flex flex-col gap-1 mb-12">
+        <div className="flex flex-col gap-1 mb-8 sm:mb-12">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-[24px] font-bold tracking-tight text-black font-display"
+            className="text-2xl sm:text-3xl font-bold tracking-tight text-black font-display"
           >
             Cover Letter
           </motion.h1>
@@ -256,7 +256,7 @@ export default function CoverLetterPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-[16px] leading-[26px] text-[#4A4A57] font-normal max-w-[667px]"
+            className="text-sm sm:text-base leading-relaxed sm:leading-[26px] text-[#4A4A57] font-normal max-w-[667px]"
           >
             Tailored to the role and company - sounds human, not generic.
           </motion.p>
@@ -272,17 +272,17 @@ export default function CoverLetterPage() {
             className="flex flex-col gap-5"
           >
             {/* Your Info Section */}
-            <div className="border border-[#E5E7EB] rounded-xl p-6 flex flex-col gap-6 bg-white shadow-sm">
+            <div className="border border-[#E5E7EB] rounded-xl p-4 sm:p-6 flex flex-col gap-5 sm:gap-6 bg-white shadow-sm">
               <div className="flex items-center gap-2">
                 <User size={18} className="text-gray-900" />
-                <h3 className="text-[14px] font-bold text-gray-900">
+                <h3 className="text-sm font-bold text-gray-900">
                   Your Info
                 </h3>
               </div>
               <div className="border-t border-[#E5E7EB]" />
 
               {/* Full Name & Email */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-[13px] font-medium text-gray-500">
                     Full name
@@ -294,7 +294,7 @@ export default function CoverLetterPage() {
                       handleUserInfoChange("fullName", e.target.value)
                     }
                     placeholder="Sarah"
-                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
+                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -308,13 +308,13 @@ export default function CoverLetterPage() {
                       handleUserInfoChange("email", e.target.value)
                     }
                     placeholder="Sarah@email.com"
-                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
+                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                   />
                 </div>
               </div>
 
               {/* Phone & Location */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-2">
                   <label className="text-[13px] font-medium text-gray-500">
                     Phone
@@ -326,7 +326,7 @@ export default function CoverLetterPage() {
                       handleUserInfoChange("phone", e.target.value)
                     }
                     placeholder="+1 202-555-0143"
-                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
+                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                   />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -340,14 +340,14 @@ export default function CoverLetterPage() {
                       handleUserInfoChange("location", e.target.value)
                     }
                     placeholder="United States"
-                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
+                    className="p-2.5 border border-[#E5E7EB] rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#27AE60] focus:border-transparent bg-white placeholder-gray-400"
                   />
                 </div>
               </div>
             </div>
 
             {/* Job Details Section */}
-            <div className="border border-[#E5E7EB] rounded-xl p-6 flex flex-col gap-6 bg-white shadow-sm">
+            <div className="border border-[#E5E7EB] rounded-xl p-4 sm:p-6 flex flex-col gap-5 sm:gap-6 bg-white shadow-sm">
               <div className="flex items-center gap-2">
                 <Briefcase size={18} className="text-gray-900" />
                 <h3 className="text-[14px] font-bold text-gray-900">
@@ -434,7 +434,7 @@ export default function CoverLetterPage() {
             </div>
 
             {/* Generate & Reset Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleGenerateLetter}
                 disabled={
@@ -443,7 +443,7 @@ export default function CoverLetterPage() {
                   state.jobDetails.length === 0 ||
                   !state.jobDescription.trim()
                 }
-                className={`flex-1 text-white py-3 px-4 rounded-lg text-[16px] font-medium flex items-center justify-center gap-2 transition-all ${
+                className={`flex-1 text-white py-3.5 px-4 rounded-xl text-base font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 ${
                   state.userInfo.fullName.trim() &&
                   state.jobDetails.length > 0 &&
                   state.jobDescription.trim()
@@ -458,7 +458,7 @@ export default function CoverLetterPage() {
                   </>
                 ) : (
                   <>
-                    Generate Cover Letter
+                    <span>Generate Cover Letter</span>
                     <Sparkles size={18} />
                   </>
                 )}
@@ -468,9 +468,9 @@ export default function CoverLetterPage() {
                 <button
                   onClick={handleResetForm}
                   title="Reset form fields and generated letter"
-                  className="px-4 py-3 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 text-[14px]"
+                  className="flex items-center justify-center gap-2 py-3.5 px-5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-semibold transition-all"
                 >
-                  <RotateCcw size={18} />
+                  <RotateCcw size={16} />
                   <span>Reset</span>
                 </button>
               )}

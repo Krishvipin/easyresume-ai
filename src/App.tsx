@@ -18,7 +18,7 @@ import CoverLetterPage from "./pages/CoverLetterPage";
 export default function App() {
   return (
     <Router>
-      <div className="min-h-screen bg-white flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col w-full overflow-x-hidden relative">
         <Navbar />
         
         <Routes>
