@@ -12,15 +12,16 @@
 
 - [Overview](#overview)
 - [Features](#features)
+- [Effective Memory Architecture](#effective-memory-architecture)
 - [Architecture Overview](#architecture-overview)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Data Models & Types](#data-models--types)
 - [State Management](#state-management)
-- [AI Integrations & Logging](#ai-integrations--logging)
+- [AI Integrations & Speed Optimization](#ai-integrations--speed-optimization)
 - [Routing & Pages](#routing--pages)
-- [Component Inventory](#component-inventory)
-- [Styling & Design System](#styling--design-system)
+- [Donation & BuyMeCoffee Integration](#donation--buymecoffee-integration)
+- [Favicon & Cross-Browser Support](#favicon--cross-browser-support)
 - [Environment Variables](#environment-variables)
 - [Getting Started](#getting-started)
 - [Available Scripts](#available-scripts)
@@ -35,11 +36,11 @@
 **EasyResume AI** is a full-featured, client-side resume management platform that helps job seekers:
 
 1. **Build** professional resumes with a real-time, live-preview editor and multiple template choices.
-2. **Tailor & Modify** existing resumes using AI to match target Job Descriptions without altering original data.
+2. **Tailor & Modify** existing resumes using AI to match target Job Descriptions without altering original candidate data.
 3. **Check** ATS (Applicant Tracking System) compatibility scores against specific job descriptions.
 4. **Generate** tailored cover letters powered by free OpenRouter AI models.
 
-The entire application runs in the browser. Resume data is stored locally in `localStorage`, and AI requests are made directly via client calls to OpenRouter free models with automatic failover.
+The entire application runs in the browser. Resume data is stored locally in `localStorage`, and AI requests are made directly via client calls to OpenRouter free models with automatic failover and high-speed parameters.
 
 ---
 
@@ -61,13 +62,14 @@ The entire application runs in the browser. Resume data is stored locally in `lo
   - Certifications list.
 - **Tailor Resume (AI Resume Modifier)**:
   - Input section for target **Job Description** and optional **ATS Score Report / Suggestions**.
-  - Powered by OpenRouter AI multi-model fallback (`nvidia/nemotron-3.5-lightning:free` → `thinkingmachines/inkling-small:free` → `meta-llama/llama-3.3-70b-instruct:free` → `openrouter/free`).
+  - Powered by OpenRouter AI multi-model fallback (`meta-llama/llama-3.3-70b-instruct:free` → `thinkingmachines/inkling-small:free` → `nvidia/nemotron-3.5-lightning:free` → `openrouter/free`).
   - Creates a separate **Modified Resume** entity in `localStorage` (`easyresume_modified_data`) while keeping the **Default Resume** static in `easyresume_data`.
   - Automatically synchronizes template styles, primary/secondary colors, and profile photo edits across both Default and Modified resumes in real time.
   - Configurable layout via `USE_TABBED_VERSION_SWITCHER` feature flag (defaults to stacked vertical previews for side-by-side comparison).
-- **Dual Resume Live Previews**:
-  - **Default Resume** preview with static badge, Reset, Copy Text, Import JSON, Export JSON, and Download PDF tools.
-  - **Modified Resume** preview stacked below with **`AI Tailored`** badge, **`Copy Modified Text`**, and **`Export Modified JSON`** tools.
+- **Dual Resume Live Previews & Controls**:
+  - **Default Resume** preview with Reset, Copy Text, Import JSON, Export JSON, and Download PDF tools.
+  - **Modified Resume** preview stacked below — renders **only when a modified resume is generated or active**.
+  - Includes **`AI Tailored`** badge, fixed-width **`Copy Modified Text`** button (no layout wobble when copied), **`Export Modified JSON`**, and a manual **`Clear`** button (`Trash2` icon) to discard the modified resume anytime.
 - **Export Options**:
   - **Download PDF** — Uses `window.print()` with print-optimized CSS (`@media print`).
   - **Download JSON** — Exports resume data as `.json` (stamped with `_isEasyResume: true`).
@@ -80,11 +82,28 @@ The entire application runs in the browser. Resume data is stored locally in `lo
 - **OpenRouter AI analysis**:
   - Returns complete `ATSAnalysisResult` (Overall Score 0-100, Score Label e.g. "Weak Match"/"Strong Match", Executive Summary, 7 category breakdown bars, Matched Skills tags, Missing Skills with severity, and numbered Recommendations).
   - Multi-model fallback sequence to guarantee uptime on free tiers.
-- **Export results**: Copy analysis summary to clipboard.
+- **1-Click Workflow (`Send to Tailor Resume ✨`)**:
+  - Formats ATS suggestions, missing skills, and top recommendations and pre-fills them directly into the Tailor Resume section on `/resume-builder`.
+- **Reset Scan**: Clear stored scan state to run fresh analysis.
 
 ### 4. Cover Letter Generator (`/cover-letter`)
 - Input form for candidate profile, target job title, company name, hiring manager, and job description.
 - Direct OpenRouter AI cover letter generation with live output display and clipboard copy.
+- **Reset Form**: Clear inputs and generated output.
+
+---
+
+## Effective Memory Architecture
+
+All user data, inputs, scan results, and generated letters are stored persistently in the browser's `localStorage` so navigating between pages or refreshing the tab never loses state.
+
+| Feature / Page | Stored Key | Persistent Contents |
+|---|---|---|
+| **Default Resume** | `easyresume_data` | Candidate personal info, work experience, education, skills, photo, template, and colors |
+| **Modified Resume** | `easyresume_modified_data` | AI-tailored resume object (cleared manually via **Clear** button or modal reset) |
+| **ATS Checker** | `easyresume_ats_checker_data` | Candidate resume text, target job description, error state, and complete ATS scan results |
+| **Cover Letter** | `easyresume_cover_letter_data` | User info, target company/role details, job description, and generated cover letter |
+| **Tailor Resume Inputs** | `easyresume_tailor_input_data` | Job description and ATS report pre-fill data |
 
 ---
 
@@ -97,7 +116,10 @@ The entire application runs in the browser. Resume data is stored locally in `lo
 │  ┌──────────┐  ┌─────────────────────────────────────────────┐  │
 │  │  React   │  │  localStorage                               │  │
 │  │  Router  │  │  ├─ "easyresume_data"          (Default)    │  │
-│  │  (SPA)   │  │  └─ "easyresume_modified_data" (Modified)   │  │
+│  │  (SPA)   │  │  ├─ "easyresume_modified_data" (Modified)   │  │
+│  │          │  │  ├─ "easyresume_ats_checker_data"           │  │
+│  │          │  │  ├─ "easyresume_cover_letter_data"          │  │
+│  │          │  │  └─ "easyresume_tailor_input_data"          │  │
 │  └──────────┘  └─────────────────────────────────────────────┘  │
 │       │                                                         │
 │  ┌────┴────────────────────────────────────────┐                │
@@ -106,10 +128,10 @@ The entire application runs in the browser. Resume data is stored locally in `lo
 │  └──────────────────────────────────────────────┘               │
 │       │                                                         │
 │  ┌────┴────────────────────────────────────────┐                │
-│  │         OpenRouter Multi-Model Engine       │                │
-│  │  1. nvidia/nemotron-3.5-lightning:free      │                │
+│  │         OpenRouter High-Speed Engine        │                │
+│  │  1. meta-llama/llama-3.3-70b-instruct:free  │                │
 │  │  2. thinkingmachines/inkling-small:free     │                │
-│  │  3. meta-llama/llama-3.3-70b-instruct:free  │                │
+│  │  3. nvidia/nemotron-3.5-lightning:free      │                │
 │  │  4. openrouter/free                         │                │
 │  └──────────────────────────────────────────────┘               │
 └─────────────────────────────────────────────────────────────────┘
@@ -139,12 +161,17 @@ The entire application runs in the browser. Resume data is stored locally in `lo
 
 ```
 easyresume-ai-codex/
-├── index.html                    # HTML entry point
+├── index.html                    # HTML entry point with favicon suite
 ├── vite.config.ts                # Vite config (React, TailwindCSS, env injection via define)
 ├── tsconfig.json                 # TypeScript config
 ├── package.json                  # Dependencies & scripts
 ├── README.md                     # Documentation
 ├── .env.example                  # Environment variable template
+│
+├── public/                       # Static public assets
+│   ├── favicon.ico               # ICO favicon fallback
+│   ├── favicon.png               # PNG favicon fallback
+│   └── favicon.svg               # SVG vector favicon
 │
 └── src/
     ├── main.tsx                  # React DOM entry
@@ -154,12 +181,16 @@ easyresume-ai-codex/
     │
     ├── pages/                    # Route-level page components
     │   ├── LandingPage.tsx       # Landing page & hero section
-    │   ├── ResumePage.tsx        # Resume builder with dual preview & AI tailoring
-    │   ├── ATSCheckerPage.tsx    # ATS score checker & analysis
+    │   ├── ResumePage.tsx        # Resume builder with dual preview, AI tailoring & clear control
+    │   ├── ATSCheckerPage.tsx    # ATS score checker, analysis & 1-click tailor transfer
     │   └── CoverLetterPage.tsx   # Cover letter generator
     │
+    ├── shared/                   # Shared UI components
+    │   └── components/
+    │       └── navbar.tsx        # Top navigation bar with BuyMeCoffee component & Donate modal
+    │
     ├── lib/                      # Core AI services & prompts
-    │   ├── openrouter.ts         # OpenRouter API engine with model fallback & logging
+    │   ├── openrouter.ts         # High-speed OpenRouter API engine with model fallback & logging
     │   ├── ats-prompt.ts         # ATS prompt template specification
     │   ├── tailor-prompt.ts      # Resume tailoring prompt specification
     │   └── utils.ts              # cn() utility
@@ -171,44 +202,45 @@ easyresume-ai-codex/
 
 ---
 
-## State Management
+## AI Integrations & Speed Optimization
 
-### localStorage Keys
-
-- **`easyresume_data`**: Stores the static **Default Resume** object (`formData`).
-- **`easyresume_modified_data`**: Stores the AI-tailored **Modified Resume** object (`modifiedFormData`).
-- Form updates for templates, primary/secondary colors, and profile photo synchronize to both objects simultaneously.
-
----
-
-## AI Integrations & Logging
-
-### OpenRouter Multi-Model Fallback Engine (`src/lib/openrouter.ts`)
+### OpenRouter High-Speed Multi-Model Fallback Engine (`src/lib/openrouter.ts`)
 
 - **Primary Models**:
-  1. `nvidia/nemotron-3.5-lightning:free`
+  1. `meta-llama/llama-3.3-70b-instruct:free` (Primary high-speed Llama 3.3 model)
   2. `thinkingmachines/inkling-small:free`
-  3. `meta-llama/llama-3.3-70b-instruct:free`
+  3. `nvidia/nemotron-3.5-lightning:free`
   4. `openrouter/free`
-- **Timeout Protection**: Per-model 30s `AbortController` timeout prevents stalled model requests from blocking the fallback chain.
+- **Request Parameters for High Speed & Precision**:
+  - `temperature: 0.2`: Reduces token sampling randomness, speeds up generation, and enforces strict JSON formatting.
+  - `max_tokens: 1500`: Constrains output generation length.
+- **Accelerated Timeout (18s)**: 18-second per-model timeout limit triggers the next fallback model immediately if a free node queues or cold-starts.
 - **Exported Functions**:
   - `getDynamicSuggestionsFromOpenRouter(resume, jobDescription, signal?)`
   - `modifyResumeWithOpenRouter(formData, jobDescription, atsReport, signal?)`
   - `generateCoverLetterFromOpenRouter(prompt, signal?)`
 
-### Console Logging (`[EasyResume AI]`)
-All key AI calls, fallback attempts, and template style updates output formatted console logs tagged with `[EasyResume AI]`. Logs remain active in both local development and Vercel production builds.
+---
+
+## Donation & BuyMeCoffee Integration
+
+Integrated `BuyMeCoffee` support component and interactive donation modal overlay:
+- **Navbar Button**: **Donate 🤍** button in desktop navigation and mobile dropdown menu.
+- **Donation Modal**: Framer Motion overlay with backdrop blur and circular close button (`w-9 h-9 rounded-full bg-zinc-100 border border-zinc-200`).
+- **Support Link**: Direct Ko-fi integration (`https://ko-fi.com/astroanimate`).
 
 ---
 
-## Routing & Pages
+## Favicon & Cross-Browser Support
 
-| Path | Component | Description |
-|---|---|---|
-| `/` | `LandingPage` | Animated hero section |
-| `/resume-builder` | `ResumePage` | Resume builder, live preview, and AI Tailor Resume section |
-| `/ats-checker` | `ATSCheckerPage` | ATS compatibility checker & analysis breakdown |
-| `/cover-letter` | `CoverLetterPage` | AI cover letter generator |
+Full cross-browser icon suite served at the root `/` URL for desktop, mobile (iOS/Android), Safari, and Vercel deployments:
+
+```html
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="apple-touch-icon" href="/favicon.png" />
+```
 
 ---
 

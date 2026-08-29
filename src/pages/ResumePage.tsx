@@ -473,6 +473,12 @@ export default function ResumePage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleClearModifiedResume = () => {
+    logDev("Clearing modified resume data.");
+    setModifiedFormData(null);
+    localStorage.removeItem("easyresume_modified_data");
+  };
+
   const handleCopyText = () => {
     const text = [
       formData.fullName,
@@ -1471,19 +1477,19 @@ export default function ResumePage() {
                 </div>
 
                 {/* 2. MODIFIED RESUME CARD (STACKED BELOW DEFAULT RESUME) */}
-                <div className="flex flex-col gap-4 border-t-2 border-emerald-500/20 pt-8 print:hidden">
-                  <div className="flex items-center justify-between border-b border-emerald-200 pb-4 flex-wrap gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="text-[22px] font-bold text-emerald-900 font-display flex items-center gap-2">
-                        Modified Resume
-                        <Sparkles size={18} className="text-emerald-600" />
+                {modifiedFormData && (
+                  <div className="flex flex-col gap-4 border-t-2 border-emerald-500/20 pt-8 print:hidden">
+                    <div className="flex items-center justify-between border-b border-emerald-200 pb-4 flex-wrap gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="text-[22px] font-bold text-emerald-900 font-display flex items-center gap-2">
+                          Modified Resume
+                          <Sparkles size={18} className="text-emerald-600" />
+                        </div>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase">
+                          AI Tailored
+                        </span>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-bold uppercase">
-                        AI Tailored
-                      </span>
-                    </div>
 
-                    {modifiedFormData && (
                       <div className="flex items-center gap-2">
                         <button
                           onClick={handleCopyModifiedText}
@@ -1509,12 +1515,18 @@ export default function ResumePage() {
                           <Download size={14} />
                           Export Modified JSON
                         </button>
+                        <button
+                          onClick={handleClearModifiedResume}
+                          title="Clear / Discard Modified Resume"
+                          className="flex items-center gap-1.5 px-3 py-2 border border-red-200 text-red-600 rounded text-[12px] font-medium hover:bg-red-50 hover:border-red-300 transition-all"
+                        >
+                          <Trash2 size={14} />
+                          <span>Clear</span>
+                        </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="bg-white overflow-auto">
-                    {modifiedFormData ? (
+                    <div className="bg-white overflow-auto">
                       <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -1529,24 +1541,9 @@ export default function ResumePage() {
                           <ModernTemplate data={modifiedFormData} />
                         )}
                       </motion.div>
-                    ) : (
-                      <div className="text-center py-16 bg-emerald-50/30 rounded-2xl border border-dashed border-emerald-200 p-8">
-                        <Sparkles
-                          size={40}
-                          className="mx-auto text-emerald-500 mb-3 opacity-80"
-                        />
-                        <h4 className="text-[17px] font-bold text-gray-900 mb-1 font-display">
-                          No Modified Resume Yet
-                        </h4>
-                        <p className="text-[14px] text-gray-600 max-w-sm mx-auto leading-relaxed">
-                          Enter your target Job Description on the left and
-                          click <strong>Modify Resume ✨</strong> to generate a
-                          tailored version right here.
-                        </p>
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </motion.div>
