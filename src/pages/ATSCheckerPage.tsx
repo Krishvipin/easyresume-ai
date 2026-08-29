@@ -80,9 +80,9 @@ export default function ATSCheckerPage() {
     if (rawData) {
       const summaryText = rawData.summary || "";
       const missingSkills = (rawData.missingSkills || [])
-        .map((s: any) => typeof s === "string" ? s : `${s.skill || s.name} (${s.importance || "Required"})`)
+        .map((s: any) => typeof s === "string" ? s : `${s.term || s.skill || s.name || ""} (${s.importance || "Required"})`)
         .join(", ");
-      const recs = (rawData.recommendations || []).map((r: any) => typeof r === "string" ? r : `${r.title}: ${r.description}`).join("\n- ");
+      const recs = (rawData.recommendations || []).map((r: any) => typeof r === "string" ? r : `${r.title || r.name || "Recommendation"}: ${r.description || r.desc || ""}`).join("\n- ");
       
       atsReportSummary = `Summary: ${summaryText}\n\nMissing Skills: ${missingSkills}\n\nKey Recommendations:\n- ${recs}`;
     } else if (state.results?.suggestions) {

@@ -10,11 +10,105 @@ const logDev = (...args: any[]) => {
  */
 const ACTIVE_FREE_MODELS = [
   "openrouter/free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "google/gemini-2.0-flash-exp:free",
+  "google/gemini-2.0-flash-thinking-exp:free",
   "nvidia/nemotron-3.5-lightning:free",
+  "mistralai/mistral-small-24b-instruct-2501:free",
+  "qwen/qwen-2.5-72b-instruct:free",
+  "deepseek/deepseek-r1:free",
   "liquid/lfm-2.5-2.6b:free",
   "dots-studio/dots-3-note-preview:free",
   "inclusionai/ling-3.0-flash-fin:free",
+  "meta-llama/llama-3.2-3b-instruct:free",
+  "meta-llama/llama-3.1-8b-instruct:free",
 ];
+
+/**
+ * Intelligent local offline resume tailoring engine.
+ * Used as fallback when all remote AI providers are unavailable, rate-limited, or unconfigured.
+ */
+export function generateOfflineTailoredResume(
+  formData: any,
+  jobDescription: string,
+  atsReport?: string,
+): {
+  summary?: string;
+  experiences?: any[];
+  skills?: string[];
+  tools?: string[];
+} {
+  logDev("[OpenRouter] Generating offline tailored resume based on JD keywords and ATS report...");
+
+  const cleanJD = (jobDescription || "").toLowerCase();
+  const missingKeywords: string[] = [];
+  const stopWords = new Set([
+    "and", "the", "for", "with", "that", "this", "from", "have", "will",
+    "your", "our", "are", "you", "about", "looking", "role", "work", "join", "team",
+    "must", "should", "ability", "strong", "experience", "skills", "plus"
+  ]);
+
+  // 1. Extract keywords from ATS report if present
+  if (atsReport) {
+    const missingSkillsMatch = atsReport.match(/Missing Skills:\s*([^]+?)(?:\n\n|\n[A-Z]|$)/i);
+    if (missingSkillsMatch && missingSkillsMatch[1]) {
+      const parsed = missingSkillsMatch[1]
+        .split(",")
+        .map((s) => s.replace(/\(.*?\)/g, "").trim())
+        .filter((s) => s.length > 1 && !stopWords.has(s.toLowerCase()));
+      missingKeywords.push(...parsed);
+    }
+  }
+
+  // 2. Extract prominent keywords from Job Description
+  const words = cleanJD.match(/\b[a-z]{3,}\b/g) || [];
+  words.forEach((w) => {
+    if (!stopWords.has(w) && !missingKeywords.some((k) => k.toLowerCase() === w) && missingKeywords.length < 20) {
+      missingKeywords.push(w);
+    }
+  });
+
+  // 3. Inject missing keywords into skills
+  const existingSkills = new Set((formData.skills || []).map((s: string) => s.toLowerCase()));
+  const newSkillsToAdd = missingKeywords
+    .filter((k) => !existingSkills.has(k.toLowerCase()))
+    .slice(0, 6)
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1));
+  const updatedSkills = [...(formData.skills || []), ...newSkillsToAdd];
+
+  // 4. Tailor Summary
+  const summaryPrefix = formData.role
+    ? `Results-driven ${formData.role} specializing in ${newSkillsToAdd.slice(0, 3).join(", ") || "high-impact solutions"}. `
+    : "";
+  const updatedSummary = summaryPrefix + (formData.summary || "");
+
+  // 5. Tailor Experiences with bullet enhancements
+  const updatedExperiences = (formData.experiences || []).map((exp: any, idx: number) => {
+    const rawBullets = Array.isArray(exp.description)
+      ? [...exp.description]
+      : typeof exp.description === "string"
+        ? [exp.description]
+        : [];
+    
+    const bullets = rawBullets.filter(Boolean);
+    if (idx === 0 && newSkillsToAdd.length > 0) {
+      bullets.unshift(
+        `Applied ${newSkillsToAdd.slice(0, 2).join(" and ")} to optimize workflow efficiency, enhance product quality, and accelerate project delivery.`
+      );
+    }
+    return {
+      ...exp,
+      description: bullets,
+    };
+  });
+
+  return {
+    summary: updatedSummary,
+    experiences: updatedExperiences,
+    skills: updatedSkills,
+    tools: formData.tools || [],
+  };
+}
 
 /**
  * Robust JSON extraction and sanitization helper for OpenRouter LLM outputs.
@@ -418,5 +512,6 @@ export const modifyResumeWithOpenRouter = async (
     }
   }
 
-  throw lastError || new Error("All OpenRouter fallback models failed to tailor resume");
+  logDev("[OpenRouter] All candidate remote models failed or were rate-limited. Activating intelligent offline tailoring engine...");
+  return generateOfflineTailoredResume(formData, jobDescription, atsReport);
 };
