@@ -256,13 +256,23 @@ export const generateCoverLetterFromOpenRouter = async (
       }
 
       const data = await response.json();
-      const text = data.choices?.[0]?.message?.content;
+      let text: string = data.choices?.[0]?.message?.content || "";
 
       if (!text) {
         throw new Error(`Empty response content from model ${model}`);
       }
 
-      return text.trim();
+      // 1. Remove reasoning / thinking process blocks e.g. <think>...</think> or [Thinking]...
+      text = text.replace(/<think>[\s\S]*?<\/think>/gi, "");
+      text = text.replace(/^[\s\S]*?(?=Dear\s|To\s|Hi\s|Greetings\s)/i, "");
+
+      // 2. Remove markdown code fences if present
+      text = text
+        .replace(/^```[a-z]*\s*/i, "")
+        .replace(/\s*```$/g, "")
+        .trim();
+
+      return text;
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (parentSignal) {

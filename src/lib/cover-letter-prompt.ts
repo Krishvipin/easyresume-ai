@@ -224,9 +224,9 @@ Use a tone appropriate for a modern professional job application: **Confident + 
 ---
 
 # OUTPUT FORMAT
-Return ONLY the final cover letter.
-Do not return: Analysis, Explanation, Notes, Suggestions, Headings such as "Cover Letter", Markdown code fences, JSON, Word count, Keyword list, Commentary.
-The output should be directly usable in the application's cover letter preview.
+Return ONLY the final cover letter text starting directly with the greeting (e.g. "Dear Hiring Manager," or "Dear John,").
+Do NOT include any internal monologue, thinking process, reasoning steps, tags like <think>, analysis, explanations, notes, headings, markdown code fences, or commentary.
+The output must contain ONLY the cover letter email content.
 
 ---
 
