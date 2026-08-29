@@ -15,6 +15,7 @@ export const getDynamicSuggestionsFromOpenRouter = async (
   // Support both process.env and import.meta.env for compatibility
   const apiKey =
     (typeof process !== "undefined" && process.env?.OPENROUTER_API_KEY) ||
+    (typeof process !== "undefined" && process.env?.VITE_OPENROUTER_API_KEY) ||
     (import.meta.env && import.meta.env.VITE_OPENROUTER_API_KEY) ||
     "";
 
