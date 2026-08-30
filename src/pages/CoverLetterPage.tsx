@@ -144,11 +144,9 @@ export default function CoverLetterPage() {
   const handleGenerateLetter = async () => {
     if (
       !state.userInfo.fullName.trim() ||
-      !state.userInfo.email.trim() ||
-      state.jobDetails.length === 0 ||
       !state.jobDescription.trim()
     ) {
-      alert("Please fill in all required fields");
+      alert("Please fill in your full name and the job description");
       return;
     }
 
@@ -520,37 +518,42 @@ export default function CoverLetterPage() {
                 disabled={
                   state.isGenerating ||
                   !state.userInfo.fullName.trim() ||
-                  state.jobDetails.length === 0 ||
                   !state.jobDescription.trim()
                 }
-                className={`flex-1 text-white py-3.5 px-4 rounded-xl text-base font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                  state.userInfo.fullName.trim() &&
-                  state.jobDetails.length > 0 &&
-                  state.jobDescription.trim()
-                    ? "bg-[#27AE60] hover:bg-[#1E8E4D] shadow-md shadow-[#27AE60]/20"
-                    : "bg-gray-400 hover:bg-gray-500"
-                }`}
+                className={`flex-1 py-4 px-6 rounded-xl text-[16px] font-semibold flex items-center justify-center gap-3 transition-all ${
+                  state.userInfo.fullName.trim() && state.jobDescription.trim()
+                    ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                } disabled:opacity-50`}
               >
                 {state.isGenerating ? (
                   <>
-                    <RefreshCw size={18} className="animate-spin" />
-                    Generating...
+                    <RefreshCw size={20} className="animate-spin" />
+                    <span>Generating...</span>
                   </>
                 ) : (
                   <>
+                    <Sparkles size={20} />
                     <span>Generate Cover Letter</span>
-                    <Sparkles size={18} />
                   </>
                 )}
               </button>
 
-              {(state.userInfo.fullName || state.jobDescription || state.generatedLetter) && (
+              {(state.userInfo.fullName ||
+                state.userInfo.email ||
+                state.userInfo.phone ||
+                state.userInfo.location ||
+                state.jobDetails[0]?.role ||
+                state.jobDetails[0]?.company ||
+                state.jobDetails[0]?.hiringManager ||
+                state.jobDescription ||
+                state.generatedLetter) && (
                 <button
                   onClick={handleResetForm}
                   title="Reset form fields and generated letter"
-                  className="flex items-center justify-center gap-2 py-3.5 px-5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-semibold transition-all"
+                  className="px-4 py-4 border border-gray-300 hover:bg-gray-100 text-gray-700 rounded-xl font-medium transition-all flex items-center justify-center gap-1.5 text-[14px]"
                 >
-                  <RotateCcw size={16} />
+                  <RotateCcw size={18} />
                   <span>Reset</span>
                 </button>
               )}
