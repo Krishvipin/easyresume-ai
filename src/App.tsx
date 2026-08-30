@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import { Navbar } from "./shared/components/navbar";
 import { Footer } from "./shared/components/footer";
@@ -16,10 +17,20 @@ import ATSCheckerPage from "./pages/ATSCheckerPage";
 import ModifyResumePage from "./pages/ModifyResumePage";
 import CoverLetterPage from "./pages/CoverLetterPage";
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 export default function App() {
   return (
     <Router>
+      <ScrollToTop />
       <div className="min-h-screen bg-white flex flex-col w-full overflow-x-hidden relative">
         <Navbar />
         
