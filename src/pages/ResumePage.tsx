@@ -1010,7 +1010,7 @@ export default function ResumePage() {
             >
               <div className="space-y-3">
                 {formData.linksPortfolio.map((link, index) => (
-                  <div key={index} className="grid grid-cols-2 gap-3">
+                  <div key={index} className="w-full">
                     <FormInput
                       label={index === 0 ? "LinkedIn" : "Portfolio"}
                       value={link.url}

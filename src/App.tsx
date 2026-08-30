@@ -6,6 +6,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Navbar } from "./shared/components/navbar";
 import { Footer } from "./shared/components/footer";
+import { ScrollToTopButton } from "./shared/components/ScrollToTopButton";
 import LandingPage from "./pages/LandingPage";
 
 import PlaceholderPage from "./pages/PlaceholderPage";
@@ -30,6 +31,7 @@ export default function App() {
         </Routes>
 
         <Footer />
+        <ScrollToTopButton />
       </div>
     </Router>
   );
