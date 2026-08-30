@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -13,12 +13,15 @@ import {
   ShieldAlert,
   CheckSquare,
   Search,
+  Briefcase,
 } from "lucide-react";
 import { calculateATSScore } from "../utils/keyword-extractor";
 import { getDynamicSuggestionsFromOpenRouter } from "../lib/openrouter";
 import { copyToClipboard } from "../lib/utils";
 import { SEO } from "../components/seo/SEO";
 import { SITE, getCanonicalUrl } from "../config/site";
+import { useWorkspaceStore } from "../store/workspaceStore";
+import type { ATSAnalysisResult } from "../types/ats";
 
 interface ATSCheckState {
   resume: string;
@@ -37,79 +40,103 @@ const logDev = (...args: any[]) => {
   console.log("[EasyResume AI]", ...args);
 };
 
+const formatResumeAsText = (resume: any): string => {
+  if (!resume) return "";
+  return [
+    resume.fullName,
+    resume.role,
+    `${resume.email || ""} | ${resume.phone || ""} | ${resume.location || ""}`.trim(),
+    resume.summary,
+    ...(resume.experiences || []).map(
+      (e: any) =>
+        `${e.position} at ${e.company} (${e.duration})\n${(e.description || []).map((d: string) => `- ${d}`).join("\n")}`,
+    ),
+    ...(resume.education || []).map(
+      (e: any) =>
+        `${e.degree} at ${e.school} (${e.duration})\n${e.details || ""}`,
+    ),
+    resume.skills?.length ? `Skills: ${resume.skills.join(", ")}` : "",
+    resume.tools?.length ? `Tools: ${resume.tools.join(", ")}` : "",
+    ...(resume.certifications || []).map(
+      (c: any) => `${c.name} - ${c.issuer} (${c.date})`,
+    ),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+};
+
+const formatAtsResult = (raw: any) => {
+  if (!raw) return undefined;
+  const suggestions = (raw.missingSkills || []).map((ms: any) =>
+    typeof ms === "string"
+      ? `Add the keyword "${ms}": Missing requirement.`
+      : `Add the keyword "${ms.term}": ${ms.reason || "Missing requirement from job description."}`,
+  );
+  const improvements = (raw.recommendations || []).map((r: any) =>
+    typeof r === "string" ? r : `${r.title}: ${r.description}`,
+  );
+  return {
+    score: typeof raw.score === "number" ? raw.score : 70,
+    suggestions:
+      suggestions.length > 0
+        ? suggestions
+        : ["Align experience bullets with job description requirements."],
+    improvements:
+      improvements.length > 0
+        ? improvements
+        : ["Add measurable outcomes and specific metrics."],
+    rawData: raw,
+  };
+};
+
 export default function ATSCheckerPage() {
   const navigate = useNavigate();
+  const { currentProject, updateCurrentProject, isInitialized, isLoading } =
+    useWorkspaceStore();
 
   const [state, setState] = useState<ATSCheckState>(() => {
-    const saved = localStorage.getItem("easyresume_ats_checker_data");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return {
-          resume: parsed.resume || "",
-          jobDescription: parsed.jobDescription || "",
-          isChecking: false,
-          error: parsed.error,
-          results: parsed.results,
-        };
-      } catch (e) {}
-    }
     return {
-      resume: "",
-      jobDescription: "",
+      resume: currentProject ? formatResumeAsText(currentProject.masterResume) : "",
+      jobDescription: currentProject?.jobDescription || "",
       isChecking: false,
+      results: formatAtsResult(currentProject?.atsResult),
     };
   });
 
   const [loadingStep, setLoadingStep] = useState(0);
   const [isCopied, setIsCopied] = useState(false);
+  const loadedProjectIdRef = useRef<string | null>(null);
 
+  // Sync state when active project changes
   useEffect(() => {
-    if (!state.isChecking) {
-      localStorage.setItem(
-        "easyresume_ats_checker_data",
-        JSON.stringify({
-          resume: state.resume,
-          jobDescription: state.jobDescription,
-          error: state.error,
-          results: state.results,
-        })
-      );
+    if (currentProject) {
+      if (loadedProjectIdRef.current !== currentProject.projectId) {
+        loadedProjectIdRef.current = currentProject.projectId;
+        setState({
+          resume: formatResumeAsText(currentProject.masterResume),
+          jobDescription: currentProject.jobDescription || "",
+          isChecking: false,
+          results: formatAtsResult(currentProject.atsResult),
+        });
+      }
     }
-  }, [state.resume, state.jobDescription, state.results, state.error, state.isChecking]);
+  }, [currentProject]);
 
   const handleResetScan = () => {
     logDev("[ATSChecker] Resetting ATS scanner state");
     setState({
-      resume: "",
+      resume: formatResumeAsText(currentProject?.masterResume),
       jobDescription: "",
       isChecking: false,
     });
-    localStorage.removeItem("easyresume_ats_checker_data");
+    updateCurrentProject({ atsResult: null, jobDescription: "" });
   };
 
   const handleSendToTailorResume = () => {
-    const rawData = state.results?.rawData;
-    let atsReportSummary = "";
-    if (rawData) {
-      const summaryText = rawData.summary || "";
-      const missingSkills = (rawData.missingSkills || [])
-        .map((s: any) => typeof s === "string" ? s : `${s.term || s.skill || s.name || ""} (${s.importance || "Required"})`)
-        .join(", ");
-      const recs = (rawData.recommendations || []).map((r: any) => typeof r === "string" ? r : `${r.title || r.name || "Recommendation"}: ${r.description || r.desc || ""}`).join("\n- ");
-      
-      atsReportSummary = `Summary: ${summaryText}\n\nMissing Skills: ${missingSkills}\n\nKey Recommendations:\n- ${recs}`;
-    } else if (state.results?.suggestions) {
-      atsReportSummary = state.results.suggestions.join("\n");
-    }
-
-    const tailorData = {
-      jobDescription: state.jobDescription,
-      atsReport: atsReportSummary,
-    };
-
-    logDev("[ATSChecker] Sending Job Description and ATS Report to Tailor Resume page:", tailorData);
-    localStorage.setItem("easyresume_tailor_input_data", JSON.stringify(tailorData));
+    // Active project already stores jobDescription and atsResult
+    logDev(
+      "[ATSChecker] Navigating to Resume Builder with active project context",
+    );
     navigate("/resume-builder");
   };
 
@@ -118,7 +145,7 @@ export default function ATSCheckerPage() {
     "Comparing experience with job requirements...",
     "Checking formatting and structure...",
     "Generating personalized improvements...",
-    "Finalizing score..."
+    "Finalizing score...",
   ];
 
   useEffect(() => {
@@ -126,20 +153,24 @@ export default function ATSCheckerPage() {
     if (state.isChecking) {
       setLoadingStep(0);
       interval = setInterval(() => {
-        setLoadingStep((prev) => (prev < loadingMessages.length - 1 ? prev + 1 : prev));
+        setLoadingStep((prev) =>
+          prev < loadingMessages.length - 1 ? prev + 1 : prev,
+        );
       }, 2500);
     }
     return () => clearInterval(interval);
   }, [state.isChecking]);
 
   const handleResumeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setState({ ...state, resume: e.target.value });
+    setState((prev) => ({ ...prev, resume: e.target.value }));
   };
 
   const handleJobDescriptionChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
-    setState({ ...state, jobDescription: e.target.value });
+    const val = e.target.value;
+    setState((prev) => ({ ...prev, jobDescription: val }));
+    updateCurrentProject({ jobDescription: val });
   };
 
   const handleCheckATS = async () => {
@@ -149,23 +180,29 @@ export default function ATSCheckerPage() {
     }
 
     logDev("[ATSChecker] Starting ATS analysis...");
-    setState({ ...state, isChecking: true, error: undefined });
+    setState((prev) => ({ ...prev, isChecking: true, error: undefined }));
 
     try {
       let aiResult: any = null;
 
       // Call OpenRouter AI directly
-      const envTimeout = parseInt(import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60", 10);
+      const envTimeout = parseInt(
+        import.meta.env.VITE_OPENROUTER_TIMEOUT_SECONDS || "60",
+        10,
+      );
       const timeoutSeconds = isNaN(envTimeout) ? 60 : envTimeout;
       const abortController = new AbortController();
-      const timeoutId = setTimeout(() => abortController.abort(), timeoutSeconds * 1000);
+      const timeoutId = setTimeout(
+        () => abortController.abort(),
+        timeoutSeconds * 1000,
+      );
 
       try {
         logDev("[ATSChecker] Calling OpenRouter AI...");
         const openRouterRes: any = await getDynamicSuggestionsFromOpenRouter(
           state.resume,
           state.jobDescription,
-          abortController.signal
+          abortController.signal,
         );
         clearTimeout(timeoutId);
         if (openRouterRes && !("error" in openRouterRes)) {
@@ -177,31 +214,49 @@ export default function ATSCheckerPage() {
         logDev("[ATSChecker] OpenRouter AI analysis failed:", openRouterError);
       }
 
-      // 3. If any AI provider succeeded, populate result state
+      // 3. If any AI provider succeeded, populate result state and persist to project
       if (aiResult) {
         logDev("[ATSChecker] Displaying AI result in UI:", aiResult);
         const suggestions = (aiResult.missingSkills || []).map(
-          (ms: any) => `Add the keyword "${ms.term}": ${ms.reason || "Missing requirement from job description."}`
+          (ms: any) =>
+            `Add the keyword "${ms.term}": ${ms.reason || "Missing requirement from job description."}`,
         );
         const improvements = (aiResult.recommendations || []).map(
-          (r: any) => `${r.title}: ${r.description}`
+          (r: any) => `${r.title}: ${r.description}`,
         );
+
+        const finalResults = {
+          score: typeof aiResult.score === "number" ? aiResult.score : 70,
+          suggestions:
+            suggestions.length > 0
+              ? suggestions
+              : [
+                  "Align experience bullets with job description requirements.",
+                ],
+          improvements:
+            improvements.length > 0
+              ? improvements
+              : ["Add measurable outcomes and specific metrics."],
+          rawData: aiResult,
+        };
 
         setState((prev) => ({
           ...prev,
           isChecking: false,
-          results: {
-            score: typeof aiResult.score === "number" ? aiResult.score : 70,
-            suggestions: suggestions.length > 0 ? suggestions : ["Align experience bullets with job description requirements."],
-            improvements: improvements.length > 0 ? improvements : ["Add measurable outcomes and specific metrics."],
-            rawData: aiResult,
-          },
+          results: finalResults,
         }));
+
+        updateCurrentProject({
+          atsResult: aiResult,
+          jobDescription: state.jobDescription,
+        });
         return;
       }
 
       // 4. Local Keyword Overlap Fallback when AI models fail or are unconfigured
-      logDev("[ATSChecker] Step 3: Falling back to local keyword overlap algorithm...");
+      logDev(
+        "[ATSChecker] Step 3: Falling back to local keyword overlap algorithm...",
+      );
       const manual = calculateATSScore(state.resume, state.jobDescription);
       const score = manual.score;
       const missing = manual.missing;
@@ -220,25 +275,66 @@ export default function ATSCheckerPage() {
         "Highlight technical skills mentioned in the job posting",
       ];
 
-      const rawData = {
+      const rawData: ATSAnalysisResult = {
         score,
-        scoreLabel: score >= 80 ? "Strong Match" : score >= 50 ? "Moderate Match" : "Weak Match",
-        summary: "This is a basic keyword matching score generated locally because AI providers are unavailable.",
-        matchedSkills: manual.matched.map((m: string) => ({ term: m, importance: "keyword" })),
-        missingSkills: manual.missing.map((m: string) => ({ term: m, importance: "keyword" })),
-        recommendations: missing.slice(0, 5).map((m: string) => ({ title: `Add missing keyword: ${m}`, description: "This keyword is present in the job description." }))
+        scoreLabel:
+          score >= 80
+            ? "Strong Match"
+            : score >= 50
+              ? "Moderate Match"
+              : "Weak Match",
+        summary:
+          "This is a basic keyword matching score generated locally because AI providers are unavailable.",
+        breakdown: {
+          requiredSkills: { score: score, maxScore: 100 },
+          experience: { score: score, maxScore: 100 },
+          keywords: { score: score, maxScore: 100 },
+          seniority: { score: score, maxScore: 100 },
+          education: { score: score, maxScore: 100 },
+          atsReadability: { score: 90, maxScore: 100 },
+          achievements: { score: score, maxScore: 100 },
+        },
+        matchedSkills: manual.matched.map((m: string) => ({
+          term: m,
+          importance: "high",
+          evidence: "Found in resume",
+        })),
+        missingSkills: manual.missing.map((m: string) => ({
+          term: m,
+          importance: "high",
+          reason: "Not found in resume",
+        })),
+        matchedRequirements: [],
+        gaps: manual.missing.slice(0, 3).map((m: string) => ({
+          issue: `Missing keyword "${m}"`,
+          description: "This keyword from the job description was not detected in your resume.",
+          severity: "medium",
+        })),
+        resumeIssues: [],
+        recommendations: missing.slice(0, 5).map((m: string, idx: number) => ({
+          priority: idx + 1,
+          title: `Add missing keyword: ${m}`,
+          description: "This keyword is present in the job description.",
+        })),
+      };
+
+      const finalResults = {
+        score,
+        suggestions,
+        improvements,
+        rawData,
       };
 
       setState((prev) => ({
         ...prev,
         isChecking: false,
-        results: {
-          score,
-          suggestions,
-          improvements,
-          rawData,
-        },
+        results: finalResults,
       }));
+
+      updateCurrentProject({
+        atsResult: rawData,
+        jobDescription: state.jobDescription,
+      });
     } catch (error: any) {
       console.error("ATS checking failed:", error);
       setState((prev) => ({
@@ -361,6 +457,43 @@ export default function ATSCheckerPage() {
       },
     ],
   };
+
+  if (!isInitialized && isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-3 border-[#27AE60] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm text-gray-500 font-medium">Loading application...</p>
+      </div>
+    );
+  }
+
+  if (isInitialized && !currentProject) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[60vh] max-w-md mx-auto">
+        <SEO
+          title="ATS Resume Checker | EasyResume AI"
+          description="Check your resume ATS compatibility with EasyResume AI."
+          path="/ats-checker"
+        />
+        <div className="w-16 h-16 bg-emerald-50 text-[#27AE60] rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+          <FileText className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2 font-display">
+          No application selected
+        </h2>
+        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+          Choose an application from your Dashboard before running an ATS check.
+        </p>
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#27AE60] text-white text-sm font-semibold hover:bg-[#219653] transition-all shadow-sm active:scale-95"
+        >
+          <span>Go to Dashboard</span>
+          <ArrowRight size={14} />
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <>

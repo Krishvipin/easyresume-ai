@@ -4,6 +4,7 @@ import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { NAV_LINKS } from "../constants/navigation";
 import { cn } from "../../lib/utils";
+import { useWorkspaceStore } from "../../store/workspaceStore";
 
 export function BuyMeCoffee() {
   return (
@@ -63,20 +64,36 @@ export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDonateOpen, setIsDonateOpen] = useState(false);
   const location = useLocation();
+  const currentProject = useWorkspaceStore((state) => state.currentProject);
 
   return (
     <>
       <nav className="sticky top-0 inset-x-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 print:hidden transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <img
-                src="/assets/logos/EasyResume AI navbar.svg"
-                alt="EasyResume AI"
-                className="h-12 w-auto"
-              />
-            </Link>
+            {/* Logo & Active Project Indicator */}
+            <div className="flex items-center gap-3">
+              <Link to="/" className="flex items-center gap-2">
+                <img
+                  src="/assets/logos/EasyResume AI navbar.svg"
+                  alt="EasyResume AI"
+                  className="h-12 w-auto"
+                />
+              </Link>
+
+              {currentProject && (
+                <Link
+                  to="/dashboard"
+                  className="hidden xl:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 text-xs font-medium text-zinc-700 transition-all border border-zinc-200 max-w-[200px]"
+                  title={`Active: ${currentProject.company || "Company"} - ${currentProject.jobTitle || "Role"}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#27AE60] shrink-0" />
+                  <span className="truncate font-semibold text-zinc-800">
+                    {currentProject.company || "Active App"}
+                  </span>
+                </Link>
+              )}
+            </div>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex flex-1 justify-center space-x-8">
@@ -98,6 +115,18 @@ export const Navbar = () => {
 
             {/* Action Buttons */}
             <div className="hidden md:flex items-center gap-3">
+              {currentProject && (
+                <Link
+                  to="/dashboard"
+                  className="hidden lg:inline-flex xl:hidden items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-100 hover:bg-zinc-200 text-xs font-medium text-zinc-700 transition-all border border-zinc-200 max-w-[150px]"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#27AE60] shrink-0" />
+                  <span className="truncate font-semibold text-zinc-800">
+                    {currentProject.company || "Active App"}
+                  </span>
+                </Link>
+              )}
+
               <button
                 onClick={() => setIsDonateOpen(true)}
                 style={{
@@ -123,7 +152,19 @@ export const Navbar = () => {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center">
+            <div className="md:hidden flex items-center gap-2">
+              {currentProject && (
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-zinc-100 text-[11px] font-medium text-zinc-700 max-w-[130px]"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#27AE60] shrink-0" />
+                  <span className="truncate font-semibold text-zinc-800">
+                    {currentProject.company || "Active"}
+                  </span>
+                </Link>
+              )}
+
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-gray-500 hover:text-black p-2"

@@ -1,7 +1,7 @@
 export const NAV_LINKS = [
+  { label: "Applications", href: "/dashboard" },
   { label: "Resume Builder", href: "/resume-builder" },
   { label: "ATS Checker", href: "/ats-checker" },
-  // { label: "Modify Resume", href: "/modify-resume" }, // Hidden per workflow update
   { label: "Cover Letter", href: "/cover-letter" },
 ];
 

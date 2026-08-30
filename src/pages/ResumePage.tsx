@@ -33,158 +33,29 @@ import { modifyResumeWithOpenRouter } from "../lib/openrouter";
 import { copyToClipboard } from "../lib/utils";
 import { SEO } from "../components/seo/SEO";
 import { SITE, getCanonicalUrl } from "../config/site";
+import type { ResumeData } from "../types/resume";
+import { createEmptyResume } from "../lib/defaults";
+import { useWorkspaceStore } from "../store/workspaceStore";
 
-export interface FormData {
-  // Template & Personal Info
-  template: "minimal" | "modern" | "professional";
-  primaryColor: string;
-  secondaryColor: string;
-  photo?: string;
+export type FormData = ResumeData;
 
-  // Personal Information
-  fullName: string;
-  role: string;
-  email: string;
-  phone: string;
-  location: string;
-  experience: number;
-  summary: string;
-
-  // LinkedIn & Portfolio
-  linksPortfolio: Array<{ label: string; url: string }>;
-
-  // Work Experience
-  experiences: Array<{
-    id: string;
-    position: string;
-    company: string;
-    duration: string;
-    description: string[];
-  }>;
-
-  // Education
-  education: Array<{
-    id: string;
-    degree: string;
-    school: string;
-    duration: string;
-    details: string;
-  }>;
-
-  // Skills
-  skills: string[];
-
-  // Tools
-  tools: string[];
-
-  // Certifications
-  certifications: Array<{
-    id: string;
-    name: string;
-    issuer: string;
-    date: string;
-  }>;
-}
-
-const initialFormData: FormData = {
-  template: "minimal",
-  primaryColor: "#1e3a8a",
-  secondaryColor: "#475569",
-  fullName: "Sarah",
-  role: "UIUX Designer",
-  email: "Sarah@email.com",
-  phone: "+91 9876543210",
-  location: "Texas",
-  experience: 6,
-  summary: "Tell me about yourself short...",
-  linksPortfolio: [
-    { label: "LinkedIn", url: "Sarah@linkedin.com" },
-    { label: "Portfolio", url: "Sarah.com" },
-  ],
-  experiences: [
-    {
-      id: "1",
-      position: "Designer",
-      company: "Google",
-      duration: "Jan 2020 - Jan 2026",
-      description: ["Write about your job experience.."],
-    },
-    {
-      id: "2",
-      position: "Designer",
-      company: "Google",
-      duration: "Jan 2020 - Jan 2026",
-      description: ["Write about your job experience.."],
-    },
-  ],
-  education: [
-    {
-      id: "1",
-      degree: "MBA",
-      school: "University",
-      duration: "Duration (eg., 2016 -2020)",
-      details: "Details (eg., GPA, Honors)",
-    },
-    {
-      id: "2",
-      degree: "MBA",
-      school: "University",
-      duration: "Duration (eg., 2016 -2020)",
-      details: "Details (eg., GPA, Honors)",
-    },
-  ],
-  skills: ["Figma", "Agile/ Scrum", "User Research"],
-  tools: ["Photoshop", "Illustrator", "Framer"],
-  certifications: [
-    {
-      id: "1",
-      name: "Google UX Design Professional Certificate",
-      issuer: "Coursera",
-      date: "2022",
-    },
-  ],
-};
+const initialFormData: FormData = createEmptyResume();
 
 // Feature flag: set to false to render Modified Resume stacked below Default Resume,
 // set to true to use tabbed version switcher in preview header.
 const USE_TABBED_VERSION_SWITCHER = false;
 
 export default function ResumePage() {
+  const { currentProject, updateCurrentProject, isInitialized, isLoading } =
+    useWorkspaceStore();
+
   const [formData, setFormData] = useState<FormData>(() => {
-    const saved = localStorage.getItem("easyresume_data");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.experiences) {
-          parsed.experiences = parsed.experiences.map((exp: any) => ({
-            ...exp,
-            description: Array.isArray(exp.description)
-              ? exp.description
-              : [exp.description].filter(Boolean),
-          }));
-        }
-        if (!parsed.tools) parsed.tools = initialFormData.tools;
-        if (!parsed.certifications)
-          parsed.certifications = initialFormData.certifications;
-        return parsed;
-      } catch (e) {
-        return initialFormData;
-      }
-    }
-    return initialFormData;
+    return currentProject?.masterResume || createEmptyResume();
   });
 
   const [modifiedFormData, setModifiedFormData] = useState<FormData | null>(
     () => {
-      const saved = localStorage.getItem("easyresume_modified_data");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          return null;
-        }
-      }
-      return null;
+      return currentProject?.modifiedResume || null;
     },
   );
 
@@ -198,53 +69,83 @@ export default function ResumePage() {
 
   const [tailorJobDescription, setTailorJobDescription] = useState<string>(
     () => {
-      const saved = localStorage.getItem("easyresume_tailor_input_data");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          return parsed.jobDescription || "";
-        } catch (e) {}
-      }
-      return "";
+      return currentProject?.jobDescription || "";
     },
   );
 
   const [tailorAtsReport, setTailorAtsReport] = useState<string>(() => {
-    const saved = localStorage.getItem("easyresume_tailor_input_data");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return parsed.atsReport || "";
-      } catch (e) {}
-    }
-    return "";
+    if (!currentProject?.atsResult) return "";
+    const raw = currentProject.atsResult;
+    const summaryText = raw.summary || "";
+    const missingSkills = (raw.missingSkills || [])
+      .map((s: any) =>
+        typeof s === "string"
+          ? s
+          : `${s.term || s.skill || s.name || ""} (${s.importance || "Required"})`,
+      )
+      .filter(Boolean)
+      .join(", ");
+    const recs = (raw.recommendations || [])
+      .map((r: any) =>
+        typeof r === "string"
+          ? r
+          : `${r.title || r.name || "Recommendation"}: ${r.description || r.desc || ""}`,
+      )
+      .join("\n- ");
+    return `Summary: ${summaryText}\n\nMissing Skills: ${missingSkills}\n\nKey Recommendations:\n- ${recs}`;
   });
 
-  useEffect(() => {
-    localStorage.setItem(
-      "easyresume_tailor_input_data",
-      JSON.stringify({
-        jobDescription: tailorJobDescription,
-        atsReport: tailorAtsReport,
-      }),
-    );
-  }, [tailorJobDescription, tailorAtsReport]);
+  const loadedProjectIdRef = useRef<string | null>(null);
 
+  // Sync state when active project changes
   useEffect(() => {
-    const loadTailorInputs = () => {
-      const saved = localStorage.getItem("easyresume_tailor_input_data");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed.jobDescription)
-            setTailorJobDescription(parsed.jobDescription);
-          if (parsed.atsReport) setTailorAtsReport(parsed.atsReport);
-        } catch (e) {}
+    if (currentProject) {
+      if (loadedProjectIdRef.current !== currentProject.projectId) {
+        loadedProjectIdRef.current = currentProject.projectId;
+        setFormData(currentProject.masterResume || createEmptyResume());
+        setModifiedFormData(currentProject.modifiedResume || null);
+        setTailorJobDescription(currentProject.jobDescription || "");
+
+        if (currentProject.atsResult) {
+          const raw = currentProject.atsResult;
+          const summaryText = raw.summary || "";
+          const missingSkills = (raw.missingSkills || [])
+            .map((s: any) =>
+              typeof s === "string"
+                ? s
+                : `${s.term || s.skill || s.name || ""} (${s.importance || "Required"})`,
+            )
+            .filter(Boolean)
+            .join(", ");
+          const recs = (raw.recommendations || [])
+            .map((r: any) =>
+              typeof r === "string"
+                ? r
+                : `${r.title || r.name || "Recommendation"}: ${r.description || r.desc || ""}`,
+            )
+            .join("\n- ");
+          setTailorAtsReport(
+            `Summary: ${summaryText}\n\nMissing Skills: ${missingSkills}\n\nKey Recommendations:\n- ${recs}`,
+          );
+        }
       }
-    };
-    window.addEventListener("focus", loadTailorInputs);
-    return () => window.removeEventListener("focus", loadTailorInputs);
-  }, []);
+    }
+  }, [currentProject]);
+
+  // Debounced auto-save of masterResume to active project in Dexie
+  useEffect(() => {
+    if (
+      !currentProject ||
+      loadedProjectIdRef.current !== currentProject.projectId
+    )
+      return;
+
+    const timer = setTimeout(() => {
+      updateCurrentProject({ masterResume: formData });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [formData, currentProject?.projectId]);
 
   const [isTailoring, setIsTailoring] = useState(false);
   const [tailorError, setTailorError] = useState<string | undefined>();
@@ -311,10 +212,10 @@ export default function ResumePage() {
         };
 
         setModifiedFormData(newModifiedData);
-        localStorage.setItem(
-          "easyresume_modified_data",
-          JSON.stringify(newModifiedData),
-        );
+        updateCurrentProject({
+          modifiedResume: newModifiedData,
+          jobDescription: tailorJobDescription,
+        });
 
         if (USE_TABBED_VERSION_SWITCHER) {
           setActiveResumeVersion("modified");
@@ -334,21 +235,6 @@ export default function ResumePage() {
       setIsTailoring(false);
     }
   };
-
-  useEffect(() => {
-    localStorage.setItem("easyresume_data", JSON.stringify(formData));
-  }, [formData]);
-
-  useEffect(() => {
-    if (modifiedFormData) {
-      localStorage.setItem(
-        "easyresume_modified_data",
-        JSON.stringify(modifiedFormData),
-      );
-    } else {
-      localStorage.removeItem("easyresume_modified_data");
-    }
-  }, [modifiedFormData]);
 
   const logDev = (...args: any[]) => {
     console.log("[EasyResume AI]", ...args);
@@ -484,7 +370,7 @@ export default function ResumePage() {
   const handleClearModifiedResume = () => {
     logDev("Clearing modified resume data.");
     setModifiedFormData(null);
-    localStorage.removeItem("easyresume_modified_data");
+    updateCurrentProject({ modifiedResume: null });
   };
 
   const handleCopyText = () => {
@@ -540,6 +426,7 @@ export default function ResumePage() {
           );
         }
         setFormData(importedData);
+        updateCurrentProject({ masterResume: importedData });
         alert("Resume imported successfully!");
       } catch (error) {
         alert("Error importing file. Please ensure it's a valid JSON.");
@@ -584,8 +471,9 @@ export default function ResumePage() {
   };
 
   const handleReset = () => {
-    localStorage.removeItem("easyresume_data");
-    setFormData(initialFormData);
+    const fresh = createEmptyResume();
+    setFormData(fresh);
+    updateCurrentProject({ masterResume: fresh });
     setShowResetConfirm(false);
   };
 
@@ -843,6 +731,43 @@ export default function ResumePage() {
       },
     ],
   };
+
+  if (!isInitialized && isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-3 border-[#27AE60] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm text-gray-500 font-medium">Loading application...</p>
+      </div>
+    );
+  }
+
+  if (isInitialized && !currentProject) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[60vh] max-w-md mx-auto">
+        <SEO
+          title="Resume Builder | EasyResume AI"
+          description="Create a professional resume online with EasyResume AI."
+          path="/resume-builder"
+        />
+        <div className="w-16 h-16 bg-emerald-50 text-[#27AE60] rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+          <Briefcase className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2 font-display">
+          No application selected
+        </h2>
+        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+          Choose an application from your Dashboard before editing a resume.
+        </p>
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#27AE60] text-white text-sm font-semibold hover:bg-[#219653] transition-all shadow-sm active:scale-95"
+        >
+          <span>Go to Dashboard</span>
+          <ArrowRight size={14} />
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col pt-20 pb-20 print:pt-0 print:pb-0 print:bg-white">

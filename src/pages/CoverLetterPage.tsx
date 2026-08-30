@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { copyToClipboard } from "../lib/utils";
@@ -15,11 +15,13 @@ import {
   CheckCircle2,
   RotateCcw,
   ArrowRight,
+  Mail,
 } from "lucide-react";
 import { generateCoverLetterPrompt } from "../lib/cover-letter-prompt";
 import { generateCoverLetterFromOpenRouter } from "../lib/openrouter";
 import { SEO } from "../components/seo/SEO";
 import { SITE, getCanonicalUrl } from "../config/site";
+import { useWorkspaceStore } from "../store/workspaceStore";
 
 interface UserInfo {
   fullName: string;
@@ -44,53 +46,86 @@ interface CoverLetterState {
 }
 
 export default function CoverLetterPage() {
+  const { currentProject, updateCurrentProject, isInitialized, isLoading } =
+    useWorkspaceStore();
+
   const [state, setState] = useState<CoverLetterState>(() => {
-    const saved = localStorage.getItem("easyresume_cover_letter_data");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return {
-          userInfo: parsed.userInfo || { fullName: "", email: "", phone: "", location: "" },
-          jobDetails: parsed.jobDetails || [{ id: "1", role: "", company: "", hiringManager: "" }],
-          jobDescription: parsed.jobDescription || "",
-          isGenerating: false,
-          generatedLetter: parsed.generatedLetter,
-        };
-      } catch (e) {}
-    }
+    const masterResume = currentProject?.masterResume;
     return {
-      userInfo: { fullName: "", email: "", phone: "", location: "" },
-      jobDetails: [{ id: "1", role: "", company: "", hiringManager: "" }],
-      jobDescription: "",
+      userInfo: {
+        fullName: masterResume?.fullName || "",
+        email: masterResume?.email || "",
+        phone: masterResume?.phone || "",
+        location: masterResume?.location || "",
+      },
+      jobDetails: [
+        {
+          id: "1",
+          role: currentProject?.jobTitle || "",
+          company: currentProject?.company || "",
+          hiringManager: "",
+        },
+      ],
+      jobDescription: currentProject?.jobDescription || "",
       isGenerating: false,
+      generatedLetter: currentProject?.coverLetter || undefined,
     };
   });
 
   const [isCopied, setIsCopied] = useState(false);
+  const loadedProjectIdRef = useRef<string | null>(null);
 
+  // Sync state when active project changes
   useEffect(() => {
-    if (!state.isGenerating) {
-      localStorage.setItem(
-        "easyresume_cover_letter_data",
-        JSON.stringify({
-          userInfo: state.userInfo,
-          jobDetails: state.jobDetails,
-          jobDescription: state.jobDescription,
-          generatedLetter: state.generatedLetter,
-        })
-      );
+    if (currentProject) {
+      if (loadedProjectIdRef.current !== currentProject.projectId) {
+        loadedProjectIdRef.current = currentProject.projectId || null;
+        const masterResume = currentProject.masterResume;
+        setState({
+          userInfo: {
+            fullName: masterResume?.fullName || "",
+            email: masterResume?.email || "",
+            phone: masterResume?.phone || "",
+            location: masterResume?.location || "",
+          },
+          jobDetails: [
+            {
+              id: "1",
+              role: currentProject.jobTitle || "",
+              company: currentProject.company || "",
+              hiringManager: "",
+            },
+          ],
+          jobDescription: currentProject.jobDescription || "",
+          isGenerating: false,
+          generatedLetter: currentProject.coverLetter || undefined,
+        });
+      }
     }
-  }, [state.userInfo, state.jobDetails, state.jobDescription, state.generatedLetter, state.isGenerating]);
+  }, [currentProject]);
 
   const handleResetForm = () => {
+    const masterResume = currentProject?.masterResume;
     setState({
-      userInfo: { fullName: "", email: "", phone: "", location: "" },
-      jobDetails: [{ id: "1", role: "", company: "", hiringManager: "" }],
+      userInfo: {
+        fullName: masterResume?.fullName || "",
+        email: masterResume?.email || "",
+        phone: masterResume?.phone || "",
+        location: masterResume?.location || "",
+      },
+      jobDetails: [
+        {
+          id: "1",
+          role: currentProject?.jobTitle || "",
+          company: currentProject?.company || "",
+          hiringManager: "",
+        },
+      ],
       jobDescription: "",
       isGenerating: false,
       generatedLetter: undefined,
     });
-    localStorage.removeItem("easyresume_cover_letter_data");
+    updateCurrentProject({ coverLetter: null });
   };
 
   // User Info handlers
@@ -138,7 +173,9 @@ export default function CoverLetterPage() {
   const handleJobDescriptionChange = (
     e: React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
-    setState({ ...state, jobDescription: e.target.value });
+    const val = e.target.value;
+    setState((prev) => ({ ...prev, jobDescription: val }));
+    updateCurrentProject({ jobDescription: val });
   };
 
   const handleGenerateLetter = async () => {
@@ -156,8 +193,9 @@ export default function CoverLetterPage() {
 
     try {
       const jobDetail = state.jobDetails[0];
-      const resumeDataStr =
-        localStorage.getItem("easyresume_data") || "No resume data provided.";
+      const resumeDataStr = currentProject?.masterResume
+        ? JSON.stringify(currentProject.masterResume)
+        : "No resume data provided.";
 
       const prompt = generateCoverLetterPrompt(
         state.userInfo.fullName,
@@ -186,24 +224,32 @@ export default function CoverLetterPage() {
       );
 
       try {
-        letterText = await generateCoverLetterFromOpenRouter(
+        const openRouterLetter = await generateCoverLetterFromOpenRouter(
           prompt,
           abortController.signal,
         );
         clearTimeout(timeoutId);
-      } catch (openRouterError: any) {
-        clearTimeout(timeoutId);
-        if (openRouterError.name === "AbortError") {
-          throw new Error("Generation timed out. Please try again.");
+        if (openRouterLetter && openRouterLetter.trim().length > 0) {
+          letterText = openRouterLetter;
         }
-        throw openRouterError;
+      } catch (openRouterErr) {
+        clearTimeout(timeoutId);
+        console.warn("OpenRouter cover letter generation failed:", openRouterErr);
       }
 
-      setState((prev) => ({
-        ...prev,
-        isGenerating: false,
-        generatedLetter: letterText,
-      }));
+      if (letterText && letterText.trim().length > 0) {
+        setState((prev) => ({
+          ...prev,
+          isGenerating: false,
+          generatedLetter: letterText,
+        }));
+        updateCurrentProject({
+          coverLetter: letterText,
+          jobDescription: state.jobDescription,
+        });
+      } else {
+        throw new Error("Could not generate cover letter. Please try again.");
+      }
     } catch (error: any) {
       console.error("Cover letter generation failed:", error);
       alert(error.message || "Failed to generate cover letter.");
@@ -292,6 +338,43 @@ export default function CoverLetterPage() {
       },
     ],
   };
+
+  if (!isInitialized && isLoading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-3 border-[#27AE60] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm text-gray-500 font-medium">Loading application...</p>
+      </div>
+    );
+  }
+
+  if (isInitialized && !currentProject) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[60vh] max-w-md mx-auto">
+        <SEO
+          title="AI Cover Letter Generator | EasyResume AI"
+          description="Generate a tailored cover letter with EasyResume AI."
+          path="/cover-letter"
+        />
+        <div className="w-16 h-16 bg-emerald-50 text-[#27AE60] rounded-2xl flex items-center justify-center mb-4 shadow-sm">
+          <Mail className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2 font-display">
+          No application selected
+        </h2>
+        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+          Choose an application from your Dashboard before generating a cover letter.
+        </p>
+        <Link
+          to="/dashboard"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#27AE60] text-white text-sm font-semibold hover:bg-[#219653] transition-all shadow-sm active:scale-95"
+        >
+          <span>Go to Dashboard</span>
+          <ArrowRight size={14} />
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col pt-10 sm:pt-16 md:pt-20 pb-12 sm:pb-20">

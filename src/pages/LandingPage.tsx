@@ -9,7 +9,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    navigate("/resume-builder");
+    navigate("/dashboard");
   };
 
   const homeJsonLd = {
