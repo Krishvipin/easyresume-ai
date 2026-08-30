@@ -4,6 +4,7 @@
  */
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import { Navbar } from "./shared/components/navbar";
 import { Footer } from "./shared/components/footer";
 import { ScrollToTopButton } from "./shared/components/ScrollToTopButton";
@@ -33,6 +34,7 @@ export default function App() {
 
         <Footer />
         <ScrollToTopButton />
+        <Analytics />
       </div>
     </Router>
   );
