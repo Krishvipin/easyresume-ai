@@ -7,21 +7,23 @@ const logDev = (...args: any[]) => {
 };
 
 /**
- * Active OpenRouter free model endpoints list.
+ * Verified live OpenRouter free model endpoints list.
+ * Ordered by reliability and response speed.
  */
 const ACTIVE_FREE_MODELS = [
-  "openrouter/free",
-  "google/gemini-2.0-flash-exp:free",
-  "google/gemini-2.0-flash-thinking-exp:free",
-  "mistralai/mistral-small-24b-instruct-2501:free",
-  "qwen/qwen-2.5-72b-instruct:free",
-  "deepseek/deepseek-r1:free",
-  "nvidia/nemotron-3.5-lightning:free",
-  "liquid/lfm-2.5-2.6b:free",
   "dots-studio/dots-3-note-preview:free",
   "inclusionai/ling-3.0-flash-fin:free",
-  "meta-llama/llama-3.2-3b-instruct:free",
-  "meta-llama/llama-3.1-8b-instruct:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "minimax/minimax-m3:free",
+  "minimax/minimax-m2.7:free",
+  "z-ai/glm-5.2:free",
+  "google/gemma-4-31b-it:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "poolside/laguna-s-2.1:free",
+  "poolside/laguna-xs-2.1:free",
+  "nvidia/nemotron-3-super-120b-a12b:free",
+  "nvidia/nemotron-3.5-lightning:free",
+  "openrouter/free",
 ];
 
 /**

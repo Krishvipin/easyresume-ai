@@ -118,7 +118,7 @@ export const Navbar = () => {
                 }}
                 className="hover:opacity-90 active:scale-95 shadow-sm cursor-pointer"
               >
-                Donate 🤍
+                Support us 🤍
               </button>
             </div>
 
@@ -170,7 +170,7 @@ export const Navbar = () => {
                   }}
                   className="w-full py-3 px-6 rounded-full bg-[#27AE60] text-white text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-sm"
                 >
-                  Donate 🤍
+                  Support us 🤍
                 </button>
               </div>
             </motion.div>
