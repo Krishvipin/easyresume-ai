@@ -11,16 +11,15 @@ const logDev = (...args: any[]) => {
  * Ordered by reliability and response speed.
  */
 const ACTIVE_FREE_MODELS = [
-  "dots-studio/dots-3-note-preview:free",
-  "inclusionai/ling-3.0-flash-fin:free",
-  "liquid/lfm-2.5-2.6b:free",
   "minimax/minimax-m3:free",
   "minimax/minimax-m2.7:free",
+  "inclusionai/ling-3.0-flash-fin:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "dots-studio/dots-3-note-preview:free",
   "z-ai/glm-5.2:free",
   "google/gemma-4-31b-it:free",
   "google/gemma-4-26b-a4b-it:free",
   "poolside/laguna-s-2.1:free",
-  "poolside/laguna-xs-2.1:free",
   "nvidia/nemotron-3-super-120b-a12b:free",
   "nvidia/nemotron-3.5-lightning:free",
   "openrouter/free",
@@ -40,19 +39,46 @@ export function generateOfflineTailoredResume(
   skills?: string[];
   tools?: string[];
 } {
-  logDev("[OpenRouter] Generating offline tailored resume based on JD keywords and ATS report...");
+  logDev(
+    "[OpenRouter] Generating offline tailored resume based on JD keywords and ATS report...",
+  );
 
   const cleanJD = (jobDescription || "").toLowerCase();
   const missingKeywords: string[] = [];
   const stopWords = new Set([
-    "and", "the", "for", "with", "that", "this", "from", "have", "will",
-    "your", "our", "are", "you", "about", "looking", "role", "work", "join", "team",
-    "must", "should", "ability", "strong", "experience", "skills", "plus"
+    "and",
+    "the",
+    "for",
+    "with",
+    "that",
+    "this",
+    "from",
+    "have",
+    "will",
+    "your",
+    "our",
+    "are",
+    "you",
+    "about",
+    "looking",
+    "role",
+    "work",
+    "join",
+    "team",
+    "must",
+    "should",
+    "ability",
+    "strong",
+    "experience",
+    "skills",
+    "plus",
   ]);
 
   // 1. Extract keywords from ATS report if present
   if (atsReport) {
-    const missingSkillsMatch = atsReport.match(/Missing Skills:\s*([^]+?)(?:\n\n|\n[A-Z]|$)/i);
+    const missingSkillsMatch = atsReport.match(
+      /Missing Skills:\s*([^]+?)(?:\n\n|\n[A-Z]|$)/i,
+    );
     if (missingSkillsMatch && missingSkillsMatch[1]) {
       const parsed = missingSkillsMatch[1]
         .split(",")
@@ -65,13 +91,19 @@ export function generateOfflineTailoredResume(
   // 2. Extract prominent keywords from Job Description
   const words = cleanJD.match(/\b[a-z]{3,}\b/g) || [];
   words.forEach((w) => {
-    if (!stopWords.has(w) && !missingKeywords.some((k) => k.toLowerCase() === w) && missingKeywords.length < 20) {
+    if (
+      !stopWords.has(w) &&
+      !missingKeywords.some((k) => k.toLowerCase() === w) &&
+      missingKeywords.length < 20
+    ) {
       missingKeywords.push(w);
     }
   });
 
   // 3. Inject missing keywords into skills
-  const existingSkills = new Set((formData.skills || []).map((s: string) => s.toLowerCase()));
+  const existingSkills = new Set(
+    (formData.skills || []).map((s: string) => s.toLowerCase()),
+  );
   const newSkillsToAdd = missingKeywords
     .filter((k) => !existingSkills.has(k.toLowerCase()))
     .slice(0, 6)
@@ -85,24 +117,26 @@ export function generateOfflineTailoredResume(
   const updatedSummary = summaryPrefix + (formData.summary || "");
 
   // 5. Tailor Experiences with bullet enhancements
-  const updatedExperiences = (formData.experiences || []).map((exp: any, idx: number) => {
-    const rawBullets = Array.isArray(exp.description)
-      ? [...exp.description]
-      : typeof exp.description === "string"
-        ? [exp.description]
-        : [];
-    
-    const bullets = rawBullets.filter(Boolean);
-    if (idx === 0 && newSkillsToAdd.length > 0) {
-      bullets.unshift(
-        `Applied ${newSkillsToAdd.slice(0, 2).join(" and ")} to optimize workflow efficiency, enhance product quality, and accelerate project delivery.`
-      );
-    }
-    return {
-      ...exp,
-      description: bullets,
-    };
-  });
+  const updatedExperiences = (formData.experiences || []).map(
+    (exp: any, idx: number) => {
+      const rawBullets = Array.isArray(exp.description)
+        ? [...exp.description]
+        : typeof exp.description === "string"
+          ? [exp.description]
+          : [];
+
+      const bullets = rawBullets.filter(Boolean);
+      if (idx === 0 && newSkillsToAdd.length > 0) {
+        bullets.unshift(
+          `Applied ${newSkillsToAdd.slice(0, 2).join(" and ")} to optimize workflow efficiency, enhance product quality, and accelerate project delivery.`,
+        );
+      }
+      return {
+        ...exp,
+        description: bullets,
+      };
+    },
+  );
 
   return {
     summary: updatedSummary,
@@ -165,7 +199,9 @@ function extractAndParseJSON<T = any>(rawText: string): T | null {
         const repaired = jsonrepair(candidate);
         const parsed = JSON.parse(repaired);
         if (parsed && typeof parsed === "object") {
-          logDev("[OpenRouter] jsonrepair successfully parsed candidate substring.");
+          logDev(
+            "[OpenRouter] jsonrepair successfully parsed candidate substring.",
+          );
           return parsed as T;
         }
       } catch (e) {}
@@ -180,7 +216,9 @@ function extractAndParseJSON<T = any>(rawText: string): T | null {
       const repaired = jsonrepair(unclosed);
       const parsed = JSON.parse(repaired);
       if (parsed && typeof parsed === "object") {
-        logDev("[OpenRouter] jsonrepair successfully recovered truncated JSON.");
+        logDev(
+          "[OpenRouter] jsonrepair successfully recovered truncated JSON.",
+        );
         return parsed as T;
       }
     } catch (e) {}
@@ -209,7 +247,10 @@ export const getDynamicSuggestionsFromOpenRouter = async (
   const modelsToTry = ACTIVE_FREE_MODELS;
 
   let lastError: any = null;
-  logDev("[OpenRouter] Initiating ATS analysis flow across candidate models:", modelsToTry);
+  logDev(
+    "[OpenRouter] Initiating ATS analysis flow across candidate models:",
+    modelsToTry,
+  );
 
   for (const model of modelsToTry) {
     if (parentSignal?.aborted) {
@@ -245,9 +286,10 @@ export const getDynamicSuggestionsFromOpenRouter = async (
             messages: [
               {
                 role: "system",
-                content: "You are an ATS Resume Analyzer API. You must output ONLY a valid, parseable JSON object matching the requested schema. Do NOT output reasoning, thinking process, preambles, or markdown formatting outside the JSON."
+                content:
+                  "You are an ATS Resume Analyzer API. You must output ONLY a valid, parseable JSON object matching the requested schema. Do NOT output reasoning, thinking process, preambles, or markdown formatting outside the JSON.",
               },
-              { role: "user", content: prompt }
+              { role: "user", content: prompt },
             ],
             response_format: { type: "json_object" },
             temperature: 0.1,
@@ -266,17 +308,28 @@ export const getDynamicSuggestionsFromOpenRouter = async (
         let errorMsg = response.statusText;
         try {
           const errorBody = await response.json();
-          errorMsg = errorBody.error?.message || JSON.stringify(errorBody.error || errorBody);
+          errorMsg =
+            errorBody.error?.message ||
+            JSON.stringify(errorBody.error || errorBody);
         } catch (e) {}
 
         if (response.status === 429) {
-          logDev(`[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`);
-          lastError = new Error("OpenRouter free tier daily rate limit reached (50 requests/day). Please wait a few minutes or try again later.");
+          logDev(
+            `[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`,
+          );
+          lastError = new Error(
+            "OpenRouter free tier daily rate limit reached (50 requests/day). Please wait a few minutes or try again later.",
+          );
           continue;
         }
 
-        logDev(`[OpenRouter] Model '${model}' HTTP Error (${response.status}):`, errorMsg);
-        throw new Error(`OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`);
+        logDev(
+          `[OpenRouter] Model '${model}' HTTP Error (${response.status}):`,
+          errorMsg,
+        );
+        throw new Error(
+          `OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`,
+        );
       }
 
       const data = await response.json();
@@ -285,17 +338,27 @@ export const getDynamicSuggestionsFromOpenRouter = async (
 
       if (!text) {
         logDev(`[OpenRouter] Model '${model}' returned empty content.`);
-        throw new Error(`Empty response content from OpenRouter model ${model}`);
+        throw new Error(
+          `Empty response content from OpenRouter model ${model}`,
+        );
       }
 
       const parsedJSON = extractAndParseJSON<ATSAnalysisResult>(text);
       if (parsedJSON) {
-        logDev(`[OpenRouter] Model '${model}' successfully produced ATS result:`, parsedJSON);
+        logDev(
+          `[OpenRouter] Model '${model}' successfully produced ATS result:`,
+          parsedJSON,
+        );
         return parsedJSON;
       }
 
-      logDev(`[OpenRouter] Model '${model}' failed JSON extraction. Raw text was:`, text.slice(0, 200) + "...");
-      throw new Error(`Failed to parse valid JSON from OpenRouter model ${model}`);
+      logDev(
+        `[OpenRouter] Model '${model}' failed JSON extraction. Raw text was:`,
+        text.slice(0, 200) + "...",
+      );
+      throw new Error(
+        `Failed to parse valid JSON from OpenRouter model ${model}`,
+      );
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (parentSignal) {
@@ -306,7 +369,10 @@ export const getDynamicSuggestionsFromOpenRouter = async (
         throw err;
       }
 
-      logDev(`[OpenRouter] Model '${model}' failed or timed out:`, err?.message || err);
+      logDev(
+        `[OpenRouter] Model '${model}' failed or timed out:`,
+        err?.message || err,
+      );
       lastError = err;
     }
   }
@@ -337,7 +403,9 @@ export const generateCoverLetterFromOpenRouter = async (
       throw new Error("Cover letter request was aborted");
     }
 
-    logDev(`[OpenRouter] Trying model '${model}' for cover letter generation...`);
+    logDev(
+      `[OpenRouter] Trying model '${model}' for cover letter generation...`,
+    );
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 20000);
 
@@ -379,16 +447,24 @@ export const generateCoverLetterFromOpenRouter = async (
         let errorMsg = response.statusText;
         try {
           const errorBody = await response.json();
-          errorMsg = errorBody.error?.message || JSON.stringify(errorBody.error || errorBody);
+          errorMsg =
+            errorBody.error?.message ||
+            JSON.stringify(errorBody.error || errorBody);
         } catch (e) {}
 
         if (response.status === 429) {
-          logDev(`[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`);
-          lastError = new Error("OpenRouter free tier daily rate limit reached. Please wait a few minutes or try again later.");
+          logDev(
+            `[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`,
+          );
+          lastError = new Error(
+            "OpenRouter free tier daily rate limit reached. Please wait a few minutes or try again later.",
+          );
           continue;
         }
 
-        throw new Error(`OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`);
+        throw new Error(
+          `OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`,
+        );
       }
 
       const data = await response.json();
@@ -419,12 +495,18 @@ export const generateCoverLetterFromOpenRouter = async (
         throw err;
       }
 
-      logDev(`[OpenRouter] Model '${model}' failed during cover letter generation:`, err?.message || err);
+      logDev(
+        `[OpenRouter] Model '${model}' failed during cover letter generation:`,
+        err?.message || err,
+      );
       lastError = err;
     }
   }
 
-  throw lastError || new Error("All OpenRouter fallback models failed to generate cover letter");
+  throw (
+    lastError ||
+    new Error("All OpenRouter fallback models failed to generate cover letter")
+  );
 };
 
 export const modifyResumeWithOpenRouter = async (
@@ -450,11 +532,18 @@ export const modifyResumeWithOpenRouter = async (
   }
 
   const { generateTailorResumePrompt } = await import("./tailor-prompt");
-  const prompt = generateTailorResumePrompt(formData, jobDescription, atsReport);
+  const prompt = generateTailorResumePrompt(
+    formData,
+    jobDescription,
+    atsReport,
+  );
 
   const modelsToTry = ACTIVE_FREE_MODELS;
   let lastError: any = null;
-  logDev("[OpenRouter] Initiating Tailor Resume flow across models:", modelsToTry);
+  logDev(
+    "[OpenRouter] Initiating Tailor Resume flow across models:",
+    modelsToTry,
+  );
 
   for (const model of modelsToTry) {
     if (parentSignal?.aborted) {
@@ -489,9 +578,10 @@ export const modifyResumeWithOpenRouter = async (
             messages: [
               {
                 role: "system",
-                content: "You are a resume tailoring API. You must output ONLY a valid, parseable JSON object matching the requested schema with tailored summary, experiences, skills, and tools. Do NOT output reasoning, thinking process, preambles, or markdown formatting outside the JSON."
+                content:
+                  "You are a resume tailoring API. You must output ONLY a valid, parseable JSON object matching the requested schema with tailored summary, experiences, skills, and tools. Do NOT output reasoning, thinking process, preambles, or markdown formatting outside the JSON.",
               },
-              { role: "user", content: prompt }
+              { role: "user", content: prompt },
             ],
             response_format: { type: "json_object" },
             temperature: 0.1,
@@ -510,16 +600,24 @@ export const modifyResumeWithOpenRouter = async (
         let errorMsg = response.statusText;
         try {
           const errorBody = await response.json();
-          errorMsg = errorBody.error?.message || JSON.stringify(errorBody.error || errorBody);
+          errorMsg =
+            errorBody.error?.message ||
+            JSON.stringify(errorBody.error || errorBody);
         } catch (e) {}
 
         if (response.status === 429) {
-          logDev(`[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`);
-          lastError = new Error("OpenRouter free tier daily rate limit reached. Please wait a few minutes or try again later.");
+          logDev(
+            `[OpenRouter] Rate limit hit (429) for '${model}'. Trying next fallback model...`,
+          );
+          lastError = new Error(
+            "OpenRouter free tier daily rate limit reached. Please wait a few minutes or try again later.",
+          );
           continue;
         }
 
-        throw new Error(`OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`);
+        throw new Error(
+          `OpenRouter API error (${response.status}) for ${model}: ${errorMsg}`,
+        );
       }
 
       const data = await response.json();
@@ -531,27 +629,56 @@ export const modifyResumeWithOpenRouter = async (
 
       const parsedJSON = extractAndParseJSON(text);
       if (parsedJSON) {
-        logDev(`[OpenRouter] Successfully tailored resume with model '${model}':`, parsedJSON);
+        logDev(
+          `[OpenRouter] Successfully tailored resume with model '${model}':`,
+          parsedJSON,
+        );
 
         const tr = parsedJSON.tailoredResume || parsedJSON;
-        const summary = tr.professionalSummary || tr.summary || parsedJSON.summary || "";
+        const summary =
+          tr.professionalSummary || tr.summary || parsedJSON.summary || "";
 
         let skills: string[] = [];
         if (Array.isArray(tr.skills)) {
-          if (tr.skills.length > 0 && typeof tr.skills[0] === "object" && tr.skills[0].items) {
-            skills = tr.skills.flatMap((s: any) => Array.isArray(s.items) ? s.items : []);
+          if (
+            tr.skills.length > 0 &&
+            typeof tr.skills[0] === "object" &&
+            tr.skills[0].items
+          ) {
+            skills = tr.skills.flatMap((s: any) =>
+              Array.isArray(s.items) ? s.items : [],
+            );
           } else {
-            skills = tr.skills.map((s: any) => typeof s === "string" ? s : s.name || s.item || "").filter(Boolean);
+            skills = tr.skills
+              .map((s: any) =>
+                typeof s === "string" ? s : s.name || s.item || "",
+              )
+              .filter(Boolean);
           }
         }
 
-        let experiences = tr.experience || tr.experiences || parsedJSON.experiences || [];
+        let experiences =
+          tr.experience || tr.experiences || parsedJSON.experiences || [];
         if (Array.isArray(experiences)) {
           experiences = experiences.map((exp: any, idx: number) => ({
-            id: exp.id || formData.experiences?.[idx]?.id || `exp-${Date.now()}-${idx}`,
-            position: exp.jobTitle || exp.position || formData.experiences?.[idx]?.position || "Role",
-            company: exp.company || formData.experiences?.[idx]?.company || "Company",
-            duration: exp.duration || (exp.startDate && exp.endDate ? `${exp.startDate} - ${exp.endDate}` : exp.startDate || formData.experiences?.[idx]?.duration || "Duration"),
+            id:
+              exp.id ||
+              formData.experiences?.[idx]?.id ||
+              `exp-${Date.now()}-${idx}`,
+            position:
+              exp.jobTitle ||
+              exp.position ||
+              formData.experiences?.[idx]?.position ||
+              "Role",
+            company:
+              exp.company || formData.experiences?.[idx]?.company || "Company",
+            duration:
+              exp.duration ||
+              (exp.startDate && exp.endDate
+                ? `${exp.startDate} - ${exp.endDate}`
+                : exp.startDate ||
+                  formData.experiences?.[idx]?.duration ||
+                  "Duration"),
             description: Array.isArray(exp.bullets)
               ? exp.bullets
               : Array.isArray(exp.description)
@@ -565,14 +692,20 @@ export const modifyResumeWithOpenRouter = async (
         return {
           ...parsedJSON,
           summary: summary || formData.summary,
-          experiences: experiences.length > 0 ? experiences : formData.experiences,
+          experiences:
+            experiences.length > 0 ? experiences : formData.experiences,
           skills: skills.length > 0 ? skills : formData.skills,
           tools: parsedJSON.tools || formData.tools || [],
         };
       }
 
-      logDev(`[OpenRouter] Model '${model}' returned invalid/truncated JSON. Raw snippet:`, text.slice(0, 250) + "...");
-      throw new Error(`Failed to parse valid JSON from OpenRouter model ${model}`);
+      logDev(
+        `[OpenRouter] Model '${model}' returned invalid/truncated JSON. Raw snippet:`,
+        text.slice(0, 250) + "...",
+      );
+      throw new Error(
+        `Failed to parse valid JSON from OpenRouter model ${model}`,
+      );
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (parentSignal) {
@@ -583,11 +716,16 @@ export const modifyResumeWithOpenRouter = async (
         throw err;
       }
 
-      logDev(`[OpenRouter] Model '${model}' failed during resume tailoring:`, err?.message || err);
+      logDev(
+        `[OpenRouter] Model '${model}' failed during resume tailoring:`,
+        err?.message || err,
+      );
       lastError = err;
     }
   }
 
-  logDev("[OpenRouter] All candidate remote models failed or were rate-limited. Activating intelligent offline tailoring engine...");
+  logDev(
+    "[OpenRouter] All candidate remote models failed or were rate-limited. Activating intelligent offline tailoring engine...",
+  );
   return generateOfflineTailoredResume(formData, jobDescription, atsReport);
 };
