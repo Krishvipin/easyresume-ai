@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Upload, FileText, RefreshCw } from "lucide-react";
+import { SEO } from "../components/seo/SEO";
 
 interface ModifyResumeState {
   resume: string;
@@ -71,6 +72,12 @@ export default function ModifyResumePage() {
 
   return (
     <div className="flex-1 flex flex-col pt-20 pb-20">
+      <SEO
+        title="Modify Resume | EasyResume AI"
+        description="Modify and tailor your resume."
+        path="/modify-resume"
+        robots="noindex, nofollow"
+      />
       <div className="max-w-7xl mx-auto px-4 w-full">
         {/* Header */}
         <div className="flex flex-col gap-1 mb-12">

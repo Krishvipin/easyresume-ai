@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Download, FileText, AlertCircle, Copy, CheckCircle2, RotateCcw, Sparkles } from "lucide-react";
+import {
+  Download,
+  FileText,
+  AlertCircle,
+  Copy,
+  CheckCircle2,
+  RotateCcw,
+  Sparkles,
+  ArrowRight,
+  ShieldAlert,
+  CheckSquare,
+  Search,
+} from "lucide-react";
 import { calculateATSScore } from "../utils/keyword-extractor";
 import { getDynamicSuggestionsFromOpenRouter } from "../lib/openrouter";
 import { copyToClipboard } from "../lib/utils";
+import { SEO } from "../components/seo/SEO";
+import { SITE, getCanonicalUrl } from "../config/site";
 
 interface ATSCheckState {
   resume: string;
@@ -297,8 +311,74 @@ export default function ATSCheckerPage() {
     });
   };
 
+  const atsCheckerJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${SITE.url}/ats-checker#webpage`,
+        "url": getCanonicalUrl("/ats-checker"),
+        "name": "Free ATS Resume Checker | Match Your Resume to a Job | EasyResume AI",
+        "description":
+          "Compare your resume with a job description, identify matching skills and gaps, and get practical recommendations before you apply.",
+        "isPartOf": {
+          "@id": `${SITE.url}/#website`,
+        },
+      },
+      {
+        "@type": "WebApplication",
+        "@id": `${SITE.url}/ats-checker#app`,
+        "name": "EasyResume AI ATS Resume Checker",
+        "url": getCanonicalUrl("/ats-checker"),
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "All",
+        "description":
+          "Free ATS resume compatibility tool that compares resume keywords against job descriptions.",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${SITE.url}/ats-checker#breadcrumb`,
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": getCanonicalUrl("/"),
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "ATS Checker",
+            "item": getCanonicalUrl("/ats-checker"),
+          },
+        ],
+      },
+    ],
+  };
+
   return (
     <>
+      <SEO
+        title="Free ATS Resume Checker | Match Your Resume to a Job | EasyResume AI"
+        description="Compare your resume with a job description, identify matching skills and gaps, and get practical recommendations before you apply."
+        path="/ats-checker"
+        ogImage="/og/ats-checker.png"
+        ogAlt="EasyResume AI ATS Resume Checker"
+        ogTitle="Free ATS Resume Checker | EasyResume AI"
+        ogDescription="Compare your resume with a job description and identify matching skills, gaps and improvements."
+        twitterTitle="Free ATS Resume Checker | EasyResume AI"
+        twitterDescription="Compare your resume with a job description and identify skills, gaps and improvements."
+        twitterImage="/og/ats-checker.png"
+        twitterAlt="EasyResume AI ATS Resume Checker"
+        jsonLd={atsCheckerJsonLd}
+      />
+
       {/* Loading Overlay */}
       {state.isChecking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-md transition-all duration-300">
@@ -338,23 +418,34 @@ export default function ATSCheckerPage() {
       <div className="flex-1 flex flex-col pt-10 sm:pt-16 md:pt-20 pb-12 sm:pb-20">
       <div className="max-w-7xl mx-auto px-4 w-full">
         {/* Header */}
-        <div className="flex flex-col gap-1 mb-8 sm:mb-12">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-2xl sm:text-3xl font-bold tracking-tight text-black font-display"
-          >
-            ATS Score Checker
-          </motion.h1>
+        <div className="flex flex-col gap-2 mb-8 sm:mb-12">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-2xl sm:text-3xl font-bold tracking-tight text-black font-display"
+            >
+              Free ATS Resume Checker
+            </motion.h1>
+
+            {/* Contextual Link to Cover Letter */}
+            <Link
+              to="/cover-letter"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#27AE60] hover:text-[#1e8e4d] bg-emerald-50/80 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full transition-all border border-emerald-200/60 w-fit"
+            >
+              <span>Need a cover letter? Generate Cover Letter</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-sm sm:text-base leading-relaxed sm:leading-[26px] text-[#4A4A57] font-normal max-w-[667px]"
+            className="text-sm sm:text-base leading-relaxed sm:leading-[26px] text-[#4A4A57] font-normal max-w-3xl"
           >
-            Paste your resume + a job description — AI shows exactly what to
-            change before you apply.
+            Compare your resume with a job description to identify relevant skills, qualification gaps and areas you can improve before applying.
           </motion.p>
         </div>
 
@@ -664,6 +755,100 @@ export default function ATSCheckerPage() {
             </div>
           </motion.div>
         </div>
+
+        {/* SEO Explanatory Content Section */}
+        <section className="mt-16 sm:mt-20 pt-12 border-t border-gray-200">
+          <div className="max-w-4xl mx-auto space-y-12">
+            {/* Section 1: What is an ATS resume checker? */}
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-gray-900 font-display">
+                What is an ATS resume checker?
+              </h2>
+              <p className="text-gray-600 leading-relaxed text-base">
+                An Applicant Tracking System (ATS) resume checker compares your resume text with a target job description to evaluate how closely your qualifications, skills, and terminology match the employer's requirements. Most employers use automated applicant tracking systems to parse, categorize, and filter candidate resumes before human recruiters review them.
+              </p>
+            </div>
+
+            {/* Section 2: What does EasyResume AI analyze? */}
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-900 font-display">
+                What does EasyResume AI analyze?
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-5 rounded-xl bg-gray-50 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-[#27AE60]" />
+                    Relevant Skills &amp; Competencies
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Identifies hard and soft skills requested in the job posting and checks if they appear in your resume.
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-xl bg-gray-50 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    <Search className="w-4 h-4 text-[#27AE60]" />
+                    Job-Specific Terminology
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Evaluates industry-standard phrases and keywords critical for ATS parsing algorithms.
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-xl bg-gray-50 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#27AE60]" />
+                    Experience Alignment
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Analyzes how your past roles, responsibilities, and seniority align with the target position.
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-xl bg-gray-50 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    Qualification Gaps
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Pinpoints missing qualifications, certifications, or tool proficiencies that may weaken your score.
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-xl bg-gray-50 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#27AE60]" />
+                    Achievement Evidence
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Checks for quantifiable impact, measurable metrics, and strong action verbs throughout your bullet points.
+                  </p>
+                </div>
+
+                <div className="p-5 rounded-xl bg-gray-50 border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#27AE60]" />
+                    Areas for Improvement
+                  </h3>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Provides concrete, prioritized suggestions you can apply directly to improve your resume before submitting.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Important Limitation / Disclaimer */}
+            <div className="p-6 rounded-2xl bg-amber-50/70 border border-amber-200">
+              <h2 className="text-lg font-bold text-amber-900 flex items-center gap-2 mb-2 font-display">
+                <ShieldAlert className="w-5 h-5 text-amber-700" />
+                Important limitation
+              </h2>
+              <p className="text-sm sm:text-base text-amber-900/90 leading-relaxed">
+                The compatibility score is an estimate based on the resume and job description you provide. It does not guarantee how a specific employer's applicant tracking system will rank your application.
+              </p>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
     </>

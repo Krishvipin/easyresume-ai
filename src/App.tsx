@@ -28,6 +28,7 @@ export default function App() {
           <Route path="/ats-checker" element={<ATSCheckerPage />} />
           <Route path="/modify-resume" element={<ModifyResumePage />} />
           <Route path="/cover-letter" element={<CoverLetterPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
         <Footer />

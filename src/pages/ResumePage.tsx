@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -26,9 +27,12 @@ import {
   Sparkles,
   PenLine,
   RefreshCw,
+  ArrowRight,
 } from "lucide-react";
 import { modifyResumeWithOpenRouter } from "../lib/openrouter";
 import { copyToClipboard } from "../lib/utils";
+import { SEO } from "../components/seo/SEO";
+import { SITE, getCanonicalUrl } from "../config/site";
 
 export interface FormData {
   // Template & Personal Info
@@ -789,8 +793,73 @@ export default function ResumePage() {
     });
   };
 
+  const resumeBuilderJsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${SITE.url}/resume-builder#webpage`,
+        "url": getCanonicalUrl("/resume-builder"),
+        "name": "Free Online Resume Builder | Create a Professional Resume | EasyResume AI",
+        "description":
+          "Create a professional resume online with EasyResume AI. Add your experience, skills and education to build a clear, job-ready resume.",
+        "isPartOf": {
+          "@id": `${SITE.url}/#website`,
+        },
+      },
+      {
+        "@type": "WebApplication",
+        "@id": `${SITE.url}/resume-builder#app`,
+        "name": "EasyResume AI Resume Builder",
+        "url": getCanonicalUrl("/resume-builder"),
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "All",
+        "description":
+          "Free online AI-powered resume builder tool with professional ATS-friendly templates.",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+        },
+      },
+      {
+        "@type": "BreadcrumbList",
+        "@id": `${SITE.url}/resume-builder#breadcrumb`,
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": getCanonicalUrl("/"),
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Resume Builder",
+            "item": getCanonicalUrl("/resume-builder"),
+          },
+        ],
+      },
+    ],
+  };
+
   return (
     <div className="flex-1 flex flex-col pt-20 pb-20 print:pt-0 print:pb-0 print:bg-white">
+      <SEO
+        title="Free Online Resume Builder | Create a Professional Resume | EasyResume AI"
+        description="Create a professional resume online with EasyResume AI. Add your experience, skills and education to build a clear, job-ready resume."
+        path="/resume-builder"
+        ogImage="/og/resume-builder.png"
+        ogAlt="EasyResume AI Resume Builder"
+        ogTitle="Free Online Resume Builder | EasyResume AI"
+        ogDescription="Create a professional resume online with EasyResume AI."
+        twitterTitle="Free Online Resume Builder | EasyResume AI"
+        twitterDescription="Create a professional and job-ready resume online."
+        twitterImage="/og/resume-builder.png"
+        twitterAlt="EasyResume AI Resume Builder"
+        jsonLd={resumeBuilderJsonLd}
+      />
       <style>{`
         @page {
           margin: 0;
@@ -805,23 +874,34 @@ export default function ResumePage() {
       `}</style>
       <div className="max-w-7xl mx-auto px-4 w-full">
         {/* Header */}
-        <div className="flex flex-col gap-1 mb-12 print:hidden">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-[24px] font-bold tracking-tight text-black font-display"
-          >
-            Resume Builder
-          </motion.h1>
+        <div className="flex flex-col gap-2 mb-10 print:hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-2xl sm:text-3xl font-bold tracking-tight text-black font-display"
+            >
+              Free Online Resume Builder
+            </motion.h1>
+
+            {/* Contextual Link to ATS Checker */}
+            <Link
+              to="/ats-checker"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#27AE60] hover:text-[#1e8e4d] bg-emerald-50/80 hover:bg-emerald-100 px-3.5 py-1.5 rounded-full transition-all border border-emerald-200/60 w-fit"
+            >
+              <span>Created your resume? Check with ATS Checker</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-[16px] leading-[26px] text-[#4A4A57] font-normal max-w-[667px]"
+            className="text-sm sm:text-base leading-relaxed text-[#4A4A57] font-normal max-w-3xl"
           >
-            Fill in your details - AI writes a clean, ATS-optimized resume. Then
-            tweak it to perfection.
+            Create a professional resume online with EasyResume AI. Add your work experience, skills, education and achievements, then organize your information into a clear, job-ready resume.
           </motion.p>
         </div>
 
