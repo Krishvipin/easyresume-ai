@@ -1,3 +1,4 @@
+import { jsonrepair } from "jsonrepair";
 import { generateATSPrompt } from "./ats-prompt";
 import type { ATSAnalysisResult } from "../types/ats";
 
@@ -10,13 +11,12 @@ const logDev = (...args: any[]) => {
  */
 const ACTIVE_FREE_MODELS = [
   "openrouter/free",
-  "meta-llama/llama-3.3-70b-instruct:free",
   "google/gemini-2.0-flash-exp:free",
   "google/gemini-2.0-flash-thinking-exp:free",
-  "nvidia/nemotron-3.5-lightning:free",
   "mistralai/mistral-small-24b-instruct-2501:free",
   "qwen/qwen-2.5-72b-instruct:free",
   "deepseek/deepseek-r1:free",
+  "nvidia/nemotron-3.5-lightning:free",
   "liquid/lfm-2.5-2.6b:free",
   "dots-studio/dots-3-note-preview:free",
   "inclusionai/ling-3.0-flash-fin:free",
@@ -111,53 +111,77 @@ export function generateOfflineTailoredResume(
 }
 
 /**
- * Robust JSON extraction and sanitization helper for OpenRouter LLM outputs.
- * Handles markdown fences, text headers/footers, and trailing commas cleanly.
+ * Robust JSON extraction, repair, and sanitization helper for OpenRouter LLM outputs.
+ * Powered by `jsonrepair` and heuristics to handle reasoning models, markdown fences, and truncated JSON.
  */
 function extractAndParseJSON<T = any>(rawText: string): T | null {
   if (!rawText || typeof rawText !== "string") return null;
 
-  // 1. Strip Markdown code block fences
+  // 1. Strip reasoning tags (<think>...</think>) and markdown fences
   let cleaned = rawText
+    .replace(/<think>[\s\S]*?<\/think>/gi, "")
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
     .trim();
 
-  // 2. Extract substring between first '{' and last '}'
-  const startIdx = cleaned.indexOf("{");
-  const endIdx = cleaned.lastIndexOf("}");
-
-  if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
-    return null;
-  }
-
-  const jsonSubstring = cleaned.slice(startIdx, endIdx + 1);
-
-  // 3. Direct JSON parsing attempt
+  // 2. Direct attempt with native JSON.parse
   try {
-    const parsed = JSON.parse(jsonSubstring);
+    const parsed = JSON.parse(cleaned);
     if (parsed && typeof parsed === "object") {
       return parsed as T;
     }
-  } catch (directErr) {
-    logDev("[OpenRouter] Direct JSON.parse failed. Attempting JSON sanitization:", directErr);
-  }
+  } catch (e) {}
 
-  // 4. Fallback: Sanitize common model formatting issues (trailing commas, control chars)
+  // 3. Direct attempt with jsonrepair
   try {
-    // Remove trailing commas before closing brackets/braces (e.g. ", ]" or ", }")
-    let sanitized = jsonSubstring.replace(/,\s*([\]}])/g, "$1");
-
-    // Strip unescaped control characters (ASCII 0-31 except tab/newline)
-    sanitized = sanitized.replace(/[\x00-\x09\x0B\x0C\x0E-\x1F]/g, "");
-
-    const parsed = JSON.parse(sanitized);
+    const repaired = jsonrepair(cleaned);
+    const parsed = JSON.parse(repaired);
     if (parsed && typeof parsed === "object") {
-      logDev("[OpenRouter] Sanitized JSON parse succeeded.");
+      logDev("[OpenRouter] jsonrepair successfully parsed whole response.");
       return parsed as T;
     }
-  } catch (sanitizedErr) {
-    logDev("[OpenRouter] Sanitized JSON parse failed:", sanitizedErr);
+  } catch (e) {}
+
+  // 4. Find candidates between first '{' and last '}'
+  const lastCloseIdx = cleaned.lastIndexOf("}");
+  if (lastCloseIdx !== -1) {
+    const openIndices: number[] = [];
+    for (let i = 0; i <= lastCloseIdx; i++) {
+      if (cleaned[i] === "{") openIndices.push(i);
+    }
+
+    for (const startIdx of openIndices) {
+      const candidate = cleaned.slice(startIdx, lastCloseIdx + 1);
+      try {
+        const parsed = JSON.parse(candidate);
+        if (parsed && typeof parsed === "object") {
+          return parsed as T;
+        }
+      } catch (e) {}
+
+      try {
+        const repaired = jsonrepair(candidate);
+        const parsed = JSON.parse(repaired);
+        if (parsed && typeof parsed === "object") {
+          logDev("[OpenRouter] jsonrepair successfully parsed candidate substring.");
+          return parsed as T;
+        }
+      } catch (e) {}
+    }
+  }
+
+  // 5. Truncated JSON Repair: For responses cut off before the closing brace
+  const firstOpenIdx = cleaned.indexOf("{");
+  if (firstOpenIdx !== -1) {
+    const unclosed = cleaned.slice(firstOpenIdx);
+    try {
+      const repaired = jsonrepair(unclosed);
+      const parsed = JSON.parse(repaired);
+      if (parsed && typeof parsed === "object") {
+        logDev("[OpenRouter] jsonrepair successfully recovered truncated JSON.");
+        return parsed as T;
+      }
+    } catch (e) {}
   }
 
   return null;
@@ -216,9 +240,16 @@ export const getDynamicSuggestionsFromOpenRouter = async (
           },
           body: JSON.stringify({
             model,
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.2,
-            max_tokens: 2500,
+            messages: [
+              {
+                role: "system",
+                content: "You are an ATS Resume Analyzer API. You must output ONLY a valid, parseable JSON object matching the requested schema. Do NOT output reasoning, thinking process, preambles, or markdown formatting outside the JSON."
+              },
+              { role: "user", content: prompt }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.1,
+            max_tokens: 4096,
           }),
           signal: controller.signal,
         },
@@ -453,9 +484,16 @@ export const modifyResumeWithOpenRouter = async (
           },
           body: JSON.stringify({
             model,
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.2,
-            max_tokens: 3500,
+            messages: [
+              {
+                role: "system",
+                content: "You are a resume tailoring API. You must output ONLY a valid, parseable JSON object matching the requested schema with tailored summary, experiences, skills, and tools. Do NOT output reasoning, thinking process, preambles, or markdown formatting outside the JSON."
+              },
+              { role: "user", content: prompt }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.1,
+            max_tokens: 4096,
           }),
           signal: controller.signal,
         },
@@ -492,7 +530,43 @@ export const modifyResumeWithOpenRouter = async (
       const parsedJSON = extractAndParseJSON(text);
       if (parsedJSON) {
         logDev(`[OpenRouter] Successfully tailored resume with model '${model}':`, parsedJSON);
-        return parsedJSON;
+
+        const tr = parsedJSON.tailoredResume || parsedJSON;
+        const summary = tr.professionalSummary || tr.summary || parsedJSON.summary || "";
+
+        let skills: string[] = [];
+        if (Array.isArray(tr.skills)) {
+          if (tr.skills.length > 0 && typeof tr.skills[0] === "object" && tr.skills[0].items) {
+            skills = tr.skills.flatMap((s: any) => Array.isArray(s.items) ? s.items : []);
+          } else {
+            skills = tr.skills.map((s: any) => typeof s === "string" ? s : s.name || s.item || "").filter(Boolean);
+          }
+        }
+
+        let experiences = tr.experience || tr.experiences || parsedJSON.experiences || [];
+        if (Array.isArray(experiences)) {
+          experiences = experiences.map((exp: any, idx: number) => ({
+            id: exp.id || formData.experiences?.[idx]?.id || `exp-${Date.now()}-${idx}`,
+            position: exp.jobTitle || exp.position || formData.experiences?.[idx]?.position || "Role",
+            company: exp.company || formData.experiences?.[idx]?.company || "Company",
+            duration: exp.duration || (exp.startDate && exp.endDate ? `${exp.startDate} - ${exp.endDate}` : exp.startDate || formData.experiences?.[idx]?.duration || "Duration"),
+            description: Array.isArray(exp.bullets)
+              ? exp.bullets
+              : Array.isArray(exp.description)
+                ? exp.description
+                : typeof exp.description === "string"
+                  ? [exp.description]
+                  : formData.experiences?.[idx]?.description || [],
+          }));
+        }
+
+        return {
+          ...parsedJSON,
+          summary: summary || formData.summary,
+          experiences: experiences.length > 0 ? experiences : formData.experiences,
+          skills: skills.length > 0 ? skills : formData.skills,
+          tools: parsedJSON.tools || formData.tools || [],
+        };
       }
 
       logDev(`[OpenRouter] Model '${model}' returned invalid/truncated JSON. Raw snippet:`, text.slice(0, 250) + "...");
